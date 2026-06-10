@@ -377,18 +377,6 @@ const loadSavingsData = async () => {
         const { data: assets, error } = await supabaseClient.from('finance_portfolio').select('*').order('category');
         if (error) throw error;
         
-        // Add Bazarito as an explicit Business Asset if not already present
-        const hasBazarito = assets.some(a => a.name && a.name.toLowerCase().includes('bazarito'));
-        if (!hasBazarito) {
-            assets.push({
-                name: 'Bazarito Cancún',
-                category: 'Negocios',
-                value: 0,
-                notes: 'Storefront (Connected to Supabase DB)',
-                icon: '🛒'
-            });
-        }
-        
         renderPortfolioFromAssets(assets);
     } catch (err) {
         console.error('Error loading portfolio:', err);

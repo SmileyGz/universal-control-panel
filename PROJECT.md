@@ -12,6 +12,14 @@ The application relies on Supabase as the primary database backend, containing t
    - **Purpose:** Stores current business assets, savings accounts, and investment values.
    - **Columns:** `id`, `name`, `category` (e.g., 'Préstamos', 'Inversiones', 'Liquidez', 'Ahorro', 'Negocios', 'Otros'), `value`, `notes`, `icon`.
    - **Views:** Feeds the Portfolio Distribution chart and the Portfolio View.
+   - **Hub-and-Spoke Architecture:** This table directly manages the performance metrics of the remote Storefronts (Vite + React) connected to the MAIN Personal Engine (Supabase). The Universal Control Panel acts as the central Admin Dashboard for these properties.
+     - Known Storefronts (Category: `Negocios`):
+       - Secretitos
+       - Bazarito Cancún (Live: `https://smileygz.github.io/Bazarito-cancun`)
+       - Litros Express
+       - Travel Services
+       - Jonla Agency
+     - *Note: Additional storefronts may be provisioned into this table dynamically.*
 
 ## Deployment Workflow (GitHub Pages)
 - **Hosting:** The web app is a static site hosted via GitHub Pages.
