@@ -1,0 +1,236 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Universal Control Panel | Admin Dashboard</title>
+    
+    <!-- Google Fonts: Inter and Outfit -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&family=Outfit:wght@400;600;700&display=swap" rel="stylesheet">
+    
+    <!-- Chart.js -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+    <!-- Custom CSS -->
+    <link rel="stylesheet" href="styles.css">
+
+    <!-- Supabase JS Client -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+</head>
+<body>
+    <div class="app-container">
+        <!-- Sidebar Navigation -->
+        <aside class="sidebar glass-panel">
+            <div class="brand">
+                <div class="logo">UCP</div>
+                <h1>Control Panel</h1>
+            </div>
+            <nav>
+                <a href="#" class="nav-item active" data-target="dashboard">
+                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="9" rx="1"/><rect x="14" y="3" width="7" height="5" rx="1"/><rect x="14" y="12" width="7" height="9" rx="1"/><rect x="3" y="16" width="7" height="5" rx="1"/></svg>
+                    Dashboard
+                </a>
+                <a href="#" class="nav-item" data-target="transactions">
+                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
+                    Transactions
+                </a>
+                <a href="#" class="nav-item" data-target="portfolio">
+                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="7" width="20" height="14" rx="2" ry="2"/><path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"/></svg>
+                    Portfolio
+                </a>
+
+            </nav>
+            <div class="sidebar-footer">
+                <div class="status-indicator">
+                    <span class="dot pulse" style="background-color: var(--success);"></span> Connected to Supabase
+                </div>
+            </div>
+        </aside>
+
+        <!-- Main Content Area -->
+        <main class="main-content">
+            <header class="topbar glass-panel">
+                <div class="page-title">
+                    <h2 id="current-page-title">Overview</h2>
+                </div>
+                <div class="actions">
+                    <select id="year-selector" class="dropdown glass-input">
+                        <!-- Populated dynamically -->
+                        <option value="loading">Loading...</option>
+                    </select>
+                </div>
+            </header>
+
+            <!-- Dashboard View -->
+            <section id="view-dashboard" class="view-section active">
+                <div class="kpi-grid">
+                    <div class="kpi-card glass-panel gradient-border">
+                        <h3>Net Cashflow</h3>
+                        <p class="amount" id="kpi-net">$0.00</p>
+                        <span class="trend" id="kpi-net-trend">Loading...</span>
+                    </div>
+                    <div class="kpi-card glass-panel">
+                        <h3>Total Income</h3>
+                        <p class="amount text-green" id="kpi-income">$0.00</p>
+                    </div>
+                    <div class="kpi-card glass-panel">
+                        <h3>Total Expenses</h3>
+                        <p class="amount text-red" id="kpi-expenses">$0.00</p>
+                    </div>
+                    <div class="kpi-card glass-panel highlight-bg">
+                        <h3>Savings & Assets</h3>
+                        <p class="amount" id="kpi-savings">$0.00</p>
+                    </div>
+                </div>
+
+                <div class="charts-container">
+                    <div class="chart-card glass-panel span-2">
+                        <div class="chart-header">
+                            <h3>Income vs Expenses (Monthly)</h3>
+                        </div>
+                        <div class="chart-wrapper">
+                            <canvas id="cashflowChart"></canvas>
+                        </div>
+                    </div>
+                    <div class="chart-card glass-panel">
+                        <div class="chart-header">
+                            <h3>Portfolio Distribution</h3>
+                        </div>
+                        <div class="chart-wrapper">
+                            <canvas id="portfolioChart"></canvas>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Transactions View -->
+            <section id="view-transactions" class="view-section">
+                <div class="glass-panel table-container">
+                    <div class="table-header" style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px;">
+                        <h3>Recent Transactions</h3>
+                        <input type="text" id="tx-search" placeholder="Search..." class="glass-input">
+                    </div>
+                    <div class="table-responsive">
+                        <table id="transactions-table">
+                            <thead>
+                                <tr>
+                                    <th>Date</th>
+                                    <th>Description</th>
+                                    <th class="align-right">Amount</th>
+                                    <th>Type</th>
+                                </tr>
+                            </thead>
+                            <tbody id="transactions-body">
+                                <tr><td colspan="4" class="text-center">Loading transactions...</td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Portfolio View -->
+            <section id="view-portfolio" class="view-section">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; flex-wrap: wrap; gap: 12px;">
+                    <div>
+                        <h3 style="font-family: var(--font-heading); font-size: 20px; color: var(--text-on-dark);">Business Assets & Portfolio</h3>
+                        <p id="portfolio-total-label" style="color: var(--text-secondary); font-size: 14px; margin-top: 4px;">Cargando activos...</p>
+                    </div>
+                    <button id="btn-setup-portfolio" class="btn btn-primary hidden" style="padding: 10px 20px; font-size: 13px;">
+                        📊 Setup Portfolio
+                    </button>
+                </div>
+                <div class="portfolio-grid" id="portfolio-grid">
+                    <div class="portfolio-card glass-panel">
+                        <div class="p-card-header"><h4>Cargando...</h4></div>
+                    </div>
+                </div>
+            </section>
+
+
+        </main>
+    </div>
+
+    <!-- Floating Add Button -->
+    <button id="fab-add" class="fab" title="Agregar Transacción">
+        <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+    </button>
+
+    <!-- Add Transaction Modal -->
+    <div id="modal-overlay" class="modal-overlay hidden">
+        <div class="modal-box glass-panel">
+            <div class="modal-header">
+                <h3 id="modal-title">Nueva Transacción</h3>
+                <button id="modal-close" class="modal-close-btn">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+                </button>
+            </div>
+            <form id="tx-form" class="tx-form">
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="f-date">Fecha</label>
+                        <input type="date" id="f-date" class="glass-input" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="f-type">Tipo</label>
+                        <select id="f-type" class="glass-input">
+                            <option value="expense">💸 Gasto</option>
+                            <option value="income">💰 Ingreso</option>
+                            <option value="portfolio">📂 Portfolio / Inversión</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label for="f-desc">Concepto</label>
+                    <input type="text" id="f-desc" class="glass-input" placeholder="Ej. Soriana, CFE, Upwork..." required>
+                </div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="f-amount">Monto (MXN)</label>
+                        <input type="number" id="f-amount" class="glass-input" placeholder="0.00" step="0.01" min="0" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="f-category">Categoría</label>
+                        <select id="f-category" class="glass-input">
+                            <option value="Personal / Vida">Personal / Vida</option>
+                            <option value="Súper / Comida">Súper / Comida</option>
+                            <option value="Servicios">Servicios</option>
+                            <option value="Transporte">Transporte</option>
+                            <option value="Marketing / Publicidad">Marketing / Publicidad</option>
+                            <option value="Envíos / Logística">Envíos / Logística</option>
+                            <option value="Empaque / Materiales">Empaque / Materiales</option>
+                            <option value="Inventario / Productos">Inventario / Productos</option>
+                            <option value="Renta">Renta</option>
+                            <option value="Intereses / Inversiones">Intereses / Inversiones</option>
+                            <option value="Ventas">Ventas</option>
+                            <option value="Freelance / Upwork">Freelance / Upwork</option>
+                            <option value="Depósito / Transferencia">Depósito / Transferencia</option>
+                            <option value="Tía — Interés Recibido">🏦 Tía — Interés Recibido</option>
+                            <option value="Tía — Abono Capital">🏦 Tía — Abono Capital</option>
+                            <option value="CETES — Rendimiento">📈 CETES — Rendimiento</option>
+                            <option value="IVVPESO — Rendimiento">🌎 IVVPESO — Rendimiento</option>
+                            <option value="Otros">Otros</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label for="f-notes">Notas (opcional)</label>
+                    <input type="text" id="f-notes" class="glass-input" placeholder="Notas adicionales...">
+                </div>
+                <div class="modal-footer">
+                    <button type="button" id="btn-cancel" class="btn btn-ghost">Cancelar</button>
+                    <button type="submit" class="btn btn-primary">Guardar Transacción</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Toast Notification -->
+    <div id="toast" class="toast hidden"></div>
+
+    <!-- Custom Logic -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
+    <script src="app.js"></script>
+</body>
+</html>
