@@ -167,7 +167,7 @@ def json_response(handler, data, code=200):
 # ============================================================
 class DashboardServer(http.server.SimpleHTTPRequestHandler):
     def translate_path(self, path):
-        root = os.path.join(os.getcwd(), 'dashboard')
+        root = os.getcwd()
         original_path = super().translate_path(path)
         rel_path = os.path.relpath(original_path, os.getcwd())
         return os.path.join(root, rel_path)
