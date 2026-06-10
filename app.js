@@ -3,7 +3,7 @@
 // ============================================================
 const SUPABASE_URL = 'https://samwziooqhzohpszyddw.supabase.co';
 const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InNhbXd6aW9vcWh6b2hwc3p5ZGR3Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODEwNDg1MzAsImV4cCI6MjA5NjYyNDUzMH0.EFmRsIARd_oh3tn_eB40J25CRpEU-v91phjwChlGnuw';
-const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
 const updateStatusIndicator = () => {
     const indicator = document.querySelector('.status-indicator');
@@ -75,7 +75,7 @@ document.getElementById('tx-form').addEventListener('submit', async (e) => {
 
     try {
         // En Supabase table, the columns are: date, description, amount, type, category, notes
-        const { error } = await supabase.from('finance_transactions').insert([tx]);
+        const { error } = await supabaseClient.from('finance_transactions').insert([tx]);
         if (error) throw error;
 
         closeModal();
@@ -180,7 +180,7 @@ const loadYearlyData = async (year) => {
         const startDate = `${year}-01-01`;
         const endDate = `${year}-12-31`;
         
-        const { data: transactions, error } = await supabase
+        const { data: transactions, error } = await supabaseClient
             .from('finance_transactions')
             .select('*')
             .gte('date', startDate)
@@ -274,7 +274,7 @@ const renderTransactions = (transactions) => {
             if (!confirm('¿Seguro que deseas eliminar esta transacción?')) return;
             const id = e.target.dataset.id;
             try {
-                const { error } = await supabase.from('finance_transactions').delete().eq('id', id);
+                const { error } = await supabaseClient.from('finance_transactions').delete().eq('id', id);
                 if (error) throw error;
                 showToast('Transacción eliminada.', 'success');
                 loadYearlyData(currentYear);
@@ -374,7 +374,7 @@ const renderPortfolioChart = (labels, data) => {
 
 const loadSavingsData = async () => {
     try {
-        const { data: assets, error } = await supabase.from('finance_portfolio').select('*').order('category');
+        const { data: assets, error } = await supabaseClient.from('finance_portfolio').select('*').order('category');
         if (error) throw error;
         
         // Add Bazarito as an explicit Business Asset if not already present
