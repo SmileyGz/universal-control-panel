@@ -302,7 +302,7 @@ const renderPortfolioFromAssets = (assets) => {
     const grid = document.getElementById('portfolio-grid');
     grid.innerHTML = '';
 
-    const validAssets = assets.filter(a => a.asset_name && a.asset_name.trim() !== '');
+    const validAssets = assets.filter(a => a.name && a.name.trim() !== '');
     const countLabel = validAssets.length;
 
     const grouped = {};
@@ -337,7 +337,7 @@ const renderPortfolioFromAssets = (assets) => {
             grid.innerHTML += `
                 <div class="portfolio-card glass-panel">
                     <div class="p-card-header">
-                        <h4>${icon} ${a.asset_name}</h4>
+                        <h4>${icon} ${a.name}</h4>
                     </div>
                     <p class="p-card-amount">${formatCurrency(parseFloat(a.value || 0))}</p>
                     <p style="color:var(--text-muted); font-size: 12px; margin-top: 4px;">${a.notes || ''}</p>
@@ -378,10 +378,10 @@ const loadSavingsData = async () => {
         if (error) throw error;
         
         // Add Bazarito as an explicit Business Asset if not already present
-        const hasBazarito = assets.some(a => a.asset_name.toLowerCase().includes('bazarito'));
+        const hasBazarito = assets.some(a => a.name && a.name.toLowerCase().includes('bazarito'));
         if (!hasBazarito) {
             assets.push({
-                asset_name: 'Bazarito Cancún',
+                name: 'Bazarito Cancún',
                 category: 'Negocios',
                 value: 0,
                 notes: 'Storefront (Connected to Supabase DB)',
