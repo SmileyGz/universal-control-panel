@@ -13,8 +13,8 @@
     <!-- Chart.js -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 
-    <!-- Custom CSS (v3.1 cache bust) -->
-    <link rel="stylesheet" href="styles.css?v=3.1">
+    <!-- Custom CSS (v3.5 cache bust) -->
+    <link rel="stylesheet" href="styles.css?v=3.5">
 
     <!-- Supabase JS Client -->
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
@@ -116,12 +116,19 @@
                             
                             <!-- Dropdown Menu -->
                             <div id="user-dropdown" class="user-dropdown-menu hidden">
+                                <div class="dropdown-header">
+                                    <div class="dropdown-header-email" id="dropdown-user-email">usuario@correo.com</div>
+                                    <div class="dropdown-header-sub">
+                                        <span>🛡️</span> Bóveda Cifrada Activa
+                                    </div>
+                                </div>
                                 <div class="dropdown-item" id="menu-btn-pricing">
                                     <span>💎</span> Plan Solopreneur Pro
                                 </div>
                                 <div class="dropdown-item" id="menu-btn-claim-data">
-                                    <span>📦</span> Reclamar Datos Históricos
+                                    <span>📦</span> Vincular Datos Históricos
                                 </div>
+                                <div class="dropdown-divider"></div>
                                 <div class="dropdown-item danger" id="menu-btn-logout">
                                     <span>🚪</span> Cerrar Sesión
                                 </div>
@@ -176,22 +183,59 @@
             <!-- Transactions View -->
             <section id="view-transactions" class="view-section">
                 <div class="glass-panel table-container">
-                    <div class="table-header" style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px;">
-                        <h3>Recent Transactions</h3>
-                        <input type="text" id="tx-search" placeholder="Search..." class="glass-input">
+                    <div class="table-header" style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 14px; margin-bottom: 16px;">
+                        <div>
+                            <h3 style="font-size: 18px; font-weight: 700; color: var(--text-on-dark);">Libro Diario de Transacciones</h3>
+                            <p style="font-size: 12px; color: var(--text-muted); margin-top: 2px;">Control detallado de ingresos, egresos y retornos de inversión</p>
+                        </div>
+                        <div style="display: flex; gap: 10px; align-items: center; flex-wrap: wrap;">
+                            <input type="text" id="tx-search" placeholder="Buscar concepto o categoría... [/]" class="glass-input" style="width: 260px;">
+                        </div>
                     </div>
+
+                    <!-- Category & Type Filter Pills (Generic, no hardcoded personal names) -->
+                    <div class="pill-group" id="tx-filter-pills" style="margin-bottom: 14px;">
+                        <button class="pill-btn active" data-tx-filter="all">Todas</button>
+                        <button class="pill-btn" data-tx-filter="income">💰 Ingresos</button>
+                        <button class="pill-btn" data-tx-filter="expense">💸 Gastos</button>
+                        <button class="pill-btn" data-tx-filter="business">🛒 Negocios</button>
+                        <button class="pill-btn" data-tx-filter="passive">📈 Intereses / Rendimientos</button>
+                    </div>
+
+                    <!-- Dynamic Subtotal Bar -->
+                    <div class="tx-summary-bar" id="tx-summary-bar">
+                        <div class="tx-stat-item">
+                            <span class="tx-stat-label">Movimientos:</span>
+                            <span class="tx-stat-val" id="tx-stat-count">0</span>
+                        </div>
+                        <div class="tx-stat-item">
+                            <span class="tx-stat-label">Ingresos Filtro:</span>
+                            <span class="tx-stat-val text-green" id="tx-stat-income">$0.00</span>
+                        </div>
+                        <div class="tx-stat-item">
+                            <span class="tx-stat-label">Gastos Filtro:</span>
+                            <span class="tx-stat-val text-red" id="tx-stat-expense">$0.00</span>
+                        </div>
+                        <div class="tx-stat-item">
+                            <span class="tx-stat-label">Neto Filtrado:</span>
+                            <span class="tx-stat-val text-gold" id="tx-stat-net">$0.00</span>
+                        </div>
+                    </div>
+
                     <div class="table-responsive">
                         <table id="transactions-table">
                             <thead>
                                 <tr>
-                                    <th>Date</th>
-                                    <th>Description</th>
-                                    <th class="align-right">Amount</th>
-                                    <th>Type</th>
+                                    <th style="width: 110px;">Fecha</th>
+                                    <th>Concepto / Detalle</th>
+                                    <th>Categoría</th>
+                                    <th class="align-right">Monto (MXN)</th>
+                                    <th>Tipo</th>
+                                    <th class="align-center" style="width: 70px;">Acción</th>
                                 </tr>
                             </thead>
                             <tbody id="transactions-body">
-                                <tr><td colspan="4" class="text-center">Loading transactions...</td></tr>
+                                <tr><td colspan="6" class="text-center">Cargando transacciones...</td></tr>
                             </tbody>
                         </table>
                     </div>
@@ -229,6 +273,7 @@
                     <div>
                         <h3 style="font-family: var(--font-heading); font-size: 19px; color: var(--text-on-dark); display: flex; align-items: center; gap: 8px;">
                             <span>🏦</span> Préstamos Otorgados & Retorno de Interés
+                            <span class="cetes-benchmark-pill">🏛️ Benchmark CETES: 10.75% Anual</span>
                         </h3>
                         <p style="color: var(--text-secondary); font-size: 13px; margin-top: 2px;">
                             Seguimiento de capital prestado, saldo insoluto e ingresos por intereses pactados.
@@ -250,6 +295,7 @@
                     <div>
                         <h3 style="font-family: var(--font-heading); font-size: 19px; color: var(--text-on-dark); display: flex; align-items: center; gap: 8px;">
                             <span>🏠</span> Propiedades en Renta & Cap Rate
+                            <span class="cetes-benchmark-pill">🏛️ Benchmark CETES: 10.75% Anual</span>
                         </h3>
                         <p style="color: var(--text-secondary); font-size: 13px; margin-top: 2px;">
                             Inmuebles en arrendamiento, rentas brutas, gastos fijos y tasa de capitalización (Cap Rate).
@@ -273,7 +319,7 @@
                             <span>🛒</span> Negocios, Cuentas y Activos del Hub
                         </h3>
                         <p style="color: var(--text-secondary); font-size: 13px; margin-top: 2px;">
-                            Activos comerciales de storefronts (Bazarito, Secretitos, etc.), ahorro y liquidez operativa.
+                            Activos comerciales de storefronts, comercio, ahorro y liquidez operativa.
                         </p>
                     </div>
                     <button id="btn-open-add-asset" class="btn btn-primary" style="padding: 8px 16px; font-size: 13px; display: flex; align-items: center; gap: 6px;">
@@ -340,7 +386,7 @@
                             <thead>
                                 <tr>
                                     <th>Instrumento</th>
-                                    <th>Tipo</th>
+                                    <th>Tipo & Mercado</th>
                                     <th class="align-right">Títulos</th>
                                     <th class="align-right">Costo Promedio</th>
                                     <th class="align-right">Precio Actual (MXN)</th>
@@ -615,6 +661,16 @@
                     <label for="loan-notes">Notas / Condiciones del Pagaré</label>
                     <input type="text" id="loan-notes" class="glass-input" placeholder="Pagaré firmado, vence en dic 2026...">
                 </div>
+                <div id="loan-preview-box" style="padding: 10px 14px; background: rgba(0, 168, 89, 0.08); border: 1px solid rgba(0, 168, 89, 0.25); border-radius: var(--radius-sm); margin-bottom: 14px; font-size: 12px; display: flex; justify-content: space-between; align-items: center;">
+                    <div>
+                        <span style="color: var(--text-muted)">Interés Mensual Proyectado:</span>
+                        <strong id="loan-preview-monthly" style="color: var(--azteca-green-vibrant); font-family: var(--font-mono); margin-left: 6px;">$0.00</strong>
+                    </div>
+                    <div>
+                        <span style="color: var(--text-muted)">vs CETES (10.75%):</span>
+                        <span id="loan-preview-spread" class="cetes-spread-badge positive" style="margin-left: 6px;">+0.00%</span>
+                    </div>
+                </div>
                 <div class="modal-footer">
                     <button type="button" id="btn-cancel-loan" class="btn btn-ghost">Cancelar</button>
                     <button type="submit" class="btn btn-primary">Guardar Préstamo</button>
@@ -724,6 +780,16 @@
                     <label for="rental-notes">Notas adicionales</label>
                     <input type="text" id="rental-notes" class="glass-input" placeholder="Depósito en garantía de $12k...">
                 </div>
+                <div id="rental-preview-box" style="padding: 10px 14px; background: rgba(0, 168, 89, 0.08); border: 1px solid rgba(0, 168, 89, 0.25); border-radius: var(--radius-sm); margin-bottom: 14px; font-size: 12px; display: flex; justify-content: space-between; align-items: center;">
+                    <div>
+                        <span style="color: var(--text-muted)">Cap Rate Anual:</span>
+                        <strong id="rental-preview-caprate" style="color: var(--azteca-green-vibrant); font-family: var(--font-mono); margin-left: 6px;">0.0%</strong>
+                    </div>
+                    <div>
+                        <span style="color: var(--text-muted)">vs CETES (10.75%):</span>
+                        <span id="rental-preview-spread" class="cetes-spread-badge warning" style="margin-left: 6px;">-0.00%</span>
+                    </div>
+                </div>
                 <div class="modal-footer">
                     <button type="button" id="btn-cancel-rental" class="btn btn-ghost">Cancelar</button>
                     <button type="submit" class="btn btn-primary">Guardar Propiedad</button>
@@ -742,7 +808,7 @@
             <form id="asset-form">
                 <div class="form-group">
                     <label for="asset-name">Nombre del Negocio o Activo</label>
-                    <input type="text" id="asset-name" class="glass-input" placeholder="Ej. Bazarito Cancún, Litros Express..." required>
+                    <input type="text" id="asset-name" class="glass-input" placeholder="Ej. Tienda Centro, E-Commerce, etc..." required>
                 </div>
                 <div class="form-row">
                     <div class="form-group">
@@ -761,11 +827,11 @@
                 </div>
                 <div class="form-group">
                     <label for="asset-url">Enlace Web / Tienda Online (Opcional)</label>
-                    <input type="url" id="asset-url" class="glass-input" placeholder="https://smileygz.github.io/Bazarito-cancun">
+                    <input type="url" id="asset-url" class="glass-input" placeholder="https://ejemplo.com/tienda">
                 </div>
                 <div class="form-group">
                     <label for="asset-notes">Descripción o Notas</label>
-                    <input type="text" id="asset-notes" class="glass-input" placeholder="Bazar de ropa y accesorios en Cancún">
+                    <input type="text" id="asset-notes" class="glass-input" placeholder="Inventario comercial, activos de negocio...">
                 </div>
                 <div class="modal-footer">
                     <button type="button" id="btn-cancel-asset" class="btn btn-ghost">Cancelar</button>
@@ -907,7 +973,7 @@
                         <div class="pricing-price">$19 USD <span>/ mes</span></div>
                         <p style="font-size: 12px; color: var(--text-secondary);">Todo lo que necesitas para escalar tus negocios y patrimonio.</p>
                         <ul class="pricing-features">
-                            <li><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg> Tiendas ilimitadas (Bazarito, Shopify, etc.)</li>
+                            <li><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg> Tiendas y storefronts ilimitados (Shopify, WooCommerce, etc.)</li>
                             <li><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg> Inversiones bursátiles (GBM+, FIBRAs, CETES)</li>
                             <li><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg> Préstamos con cálculo de intereses</li>
                             <li><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg> Inmuebles en renta con Cap Rate automático</li>
@@ -925,6 +991,6 @@
 
     <!-- Custom Logic -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
-    <script src="app.js?v=20260917_v7"></script>
+    <script src="app.js?v=20260917_v8"></script>
 </body>
 </html>

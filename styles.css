@@ -714,7 +714,8 @@ tr:hover td { background-color: rgba(0, 168, 89, 0.08); }
     animation: fadeIn 0.2s ease;
 }
 
-.modal-overlay.hidden { display: none; }
+.hidden { display: none !important; }
+.modal-overlay.hidden { display: none !important; }
 
 .modal-box {
     width: 100%;
@@ -1217,21 +1218,50 @@ select.glass-input option {
     position: absolute;
     top: calc(100% + 8px);
     right: 0;
-    min-width: 220px;
-    background: rgba(10, 16, 13, 0.96);
+    min-width: 250px;
+    background: rgba(10, 16, 13, 0.98);
     border: 1px solid rgba(0, 168, 89, 0.4);
     border-radius: 12px;
     padding: 8px;
-    box-shadow: 0 16px 40px rgba(0, 0, 0, 0.85);
+    box-shadow: 0 16px 40px rgba(0, 0, 0, 0.9), 0 0 20px rgba(0, 168, 89, 0.15);
     z-index: 1000;
-    backdrop-filter: blur(20px);
+    backdrop-filter: blur(24px);
+    animation: fadeIn 0.18s ease;
+}
+
+.dropdown-header {
+    padding: 8px 12px 10px 12px;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+    margin-bottom: 6px;
+}
+
+.dropdown-header-email {
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--text-on-dark);
+    word-break: break-all;
+}
+
+.dropdown-header-sub {
+    font-size: 11px;
+    color: var(--azteca-gold);
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    margin-top: 3px;
+}
+
+.dropdown-divider {
+    height: 1px;
+    background: rgba(255, 255, 255, 0.08);
+    margin: 6px 0;
 }
 
 .dropdown-item {
     display: flex;
     align-items: center;
-    gap: 8px;
-    padding: 9px 12px;
+    gap: 10px;
+    padding: 10px 12px;
     border-radius: 8px;
     color: var(--text-on-dark);
     font-size: 13px;
@@ -1242,14 +1272,16 @@ select.glass-input option {
 .dropdown-item:hover {
     background: rgba(0, 168, 89, 0.15);
     color: var(--azteca-gold);
+    transform: translateX(2px);
 }
 
 .dropdown-item.danger {
-    color: var(--mx-red-light);
+    color: #ff6b6b;
 }
 
 .dropdown-item.danger:hover {
-    background: rgba(229, 57, 53, 0.15);
+    background: rgba(229, 57, 53, 0.18);
+    color: #ff8787;
 }
 
 /* SaaS Pricing Grid */
@@ -1327,6 +1359,198 @@ select.glass-input option {
     color: var(--azteca-green-vibrant);
     flex-shrink: 0;
 }
+
+/* ============================================
+   FASE 2: HIGH-DENSITY INVESTING & CETES STYLES
+   ============================================ */
+
+/* Transactions Summary & Filter Bar */
+.tx-summary-bar {
+    display: flex;
+    align-items: center;
+    gap: 18px;
+    padding: 10px 18px;
+    background: rgba(9, 17, 14, 0.85);
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-md);
+    margin-bottom: 16px;
+    flex-wrap: wrap;
+    box-shadow: inset 0 1px 0 rgba(0, 168, 89, 0.12);
+}
+
+.tx-stat-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 12px;
+}
+
+.tx-stat-label {
+    color: var(--text-muted);
+    font-weight: 500;
+}
+
+.tx-stat-val {
+    font-family: var(--font-mono);
+    font-weight: 700;
+    color: var(--text-primary);
+}
+
+/* CETES 28D Benchmark Badges ("¿Le ganas a CETES?") */
+.cetes-benchmark-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 11px;
+    font-weight: 600;
+    color: var(--azteca-gold);
+    background: rgba(255, 199, 44, 0.12);
+    border: 1px solid rgba(255, 199, 44, 0.35);
+    padding: 3px 10px;
+    border-radius: 999px;
+    letter-spacing: 0.3px;
+}
+
+.cetes-spread-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    font-size: 10px;
+    font-weight: 700;
+    padding: 2px 7px;
+    border-radius: 4px;
+    font-family: var(--font-mono);
+    letter-spacing: 0.2px;
+}
+.cetes-spread-badge.positive {
+    background: rgba(0, 168, 89, 0.20);
+    color: var(--azteca-green-vibrant);
+    border: 1px solid rgba(0, 168, 89, 0.40);
+}
+.cetes-spread-badge.warning {
+    background: rgba(255, 199, 44, 0.15);
+    color: var(--azteca-gold);
+    border: 1px solid rgba(255, 199, 44, 0.40);
+}
+
+/* Investments High-Density Terminal (Investing.com Style) */
+.ticker-cell {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.ticker-icon {
+    width: 34px;
+    height: 34px;
+    border-radius: 8px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-family: var(--font-heading);
+    font-weight: 800;
+    font-size: 13px;
+    flex-shrink: 0;
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+}
+.ticker-icon.fibra { background: rgba(122, 40, 138, 0.35); color: #d687ef; border-color: rgba(199, 112, 227, 0.45); }
+.ticker-icon.etf   { background: rgba(0, 168, 232, 0.25); color: #38bdf8; border-color: rgba(0, 180, 216, 0.45); }
+.ticker-icon.stock { background: rgba(0, 168, 89, 0.25); color: var(--azteca-green-vibrant); border-color: rgba(0, 168, 89, 0.45); }
+.ticker-icon.cetes { background: rgba(255, 199, 44, 0.25); color: var(--azteca-gold); border-color: rgba(255, 199, 44, 0.45); }
+.ticker-icon.otro  { background: rgba(107, 58, 31, 0.35); color: #e5b88f; border-color: rgba(212, 163, 115, 0.45); }
+
+.ticker-title-group {
+    display: flex;
+    flex-direction: column;
+}
+
+.ticker-code {
+    font-family: var(--font-mono);
+    font-size: 14px;
+    font-weight: 700;
+    color: var(--text-on-dark);
+    letter-spacing: 0.3px;
+}
+
+.ticker-name {
+    font-size: 11px;
+    color: var(--text-muted);
+    max-width: 170px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.broker-tag {
+    display: inline-block;
+    font-size: 10px;
+    color: var(--text-muted);
+    background: rgba(255, 255, 255, 0.05);
+    padding: 2px 6px;
+    border-radius: 4px;
+    margin-top: 3px;
+    border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+/* Micro-Barra de Rendimiento Costo vs Mercado */
+.price-meter-container {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    gap: 3px;
+}
+
+.price-meter-bar {
+    height: 4px;
+    border-radius: 2px;
+    background: rgba(255, 255, 255, 0.1);
+    width: 65px;
+    position: relative;
+    overflow: hidden;
+}
+
+.price-meter-fill {
+    height: 100%;
+    border-radius: 2px;
+    transition: width 0.3s ease;
+}
+.price-meter-fill.gain { background: var(--azteca-green-vibrant); }
+.price-meter-fill.loss { background: var(--mx-red-light); }
+
+/* P&L Pills */
+.pnl-pill {
+    display: inline-flex;
+    flex-direction: column;
+    align-items: flex-end;
+    padding: 4px 9px;
+    border-radius: 6px;
+    font-family: var(--font-mono);
+    font-size: 12px;
+    font-weight: 700;
+}
+.pnl-pill.pos {
+    background: rgba(0, 168, 89, 0.18);
+    color: var(--azteca-green-vibrant);
+    border: 1px solid rgba(0, 168, 89, 0.38);
+}
+.pnl-pill.neg {
+    background: rgba(229, 57, 53, 0.18);
+    color: var(--mx-red-light);
+    border: 1px solid rgba(229, 57, 53, 0.38);
+}
+.pnl-pill.neutral {
+    background: rgba(255, 255, 255, 0.06);
+    color: var(--text-muted);
+    border: 1px solid rgba(255, 255, 255, 0.12);
+}
+
+.pnl-pct-tag {
+    font-size: 10px;
+    font-weight: 600;
+    opacity: 0.9;
+}
+
 
 
 

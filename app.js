@@ -271,39 +271,95 @@ const loadYearlyData = async (year) => {
 };
 
 // ============================================================
-// SEARCH FILTER
+// TRANSACTION FILTERS & DYNAMIC SUBTOTAL LEDGER
 // ============================================================
-document.getElementById('tx-search').addEventListener('input', (e) => {
-    const q = e.target.value.toLowerCase();
-    document.querySelectorAll('#transactions-body tr').forEach(row => {
-        row.style.display = row.textContent.toLowerCase().includes(q) ? '' : 'none';
-    });
-});
+let currentTransactions = [];
+let activeTxFilter = 'all';
 
-// ============================================================
-// RENDER TRANSACTIONS TABLE
-// ============================================================
-const renderTransactions = (transactions) => {
+const applyTransactionsFilter = () => {
     const tbody = document.getElementById('transactions-body');
+    if (!tbody) return;
     tbody.innerHTML = '';
 
-    if (!transactions || transactions.length === 0) {
-        tbody.innerHTML = `<tr><td colspan="5" class="text-center" style="padding:32px;color:var(--text-muted)">Sin transacciones para este año.</td></tr>`;
+    const query = (document.getElementById('tx-search')?.value || '').toLowerCase().trim();
+
+    const filtered = currentTransactions.filter(tx => {
+        // Filter by pill
+        let matchesFilter = true;
+        if (activeTxFilter === 'income') {
+            matchesFilter = tx.type === 'income';
+        } else if (activeTxFilter === 'expense') {
+            matchesFilter = tx.type === 'expense';
+        } else if (activeTxFilter === 'business') {
+            const cat = (tx.category || '').toLowerCase();
+            const desc = (tx.description || '').toLowerCase();
+            const notes = (tx.notes || '').toLowerCase();
+            matchesFilter = cat.includes('negocio') || cat.includes('venta') || cat.includes('comercio') || cat.includes('tienda') || cat.includes('store') || desc.includes('venta') || desc.includes('tienda') || notes.includes('tienda');
+        } else if (activeTxFilter === 'passive') {
+            const cat = (tx.category || '').toLowerCase();
+            const desc = (tx.description || '').toLowerCase();
+            matchesFilter = cat.includes('interés') || cat.includes('interes') || cat.includes('renta') || cat.includes('dividendo') || cat.includes('rendimiento') || cat.includes('cetes') || desc.includes('interés') || desc.includes('interes') || desc.includes('renta');
+        }
+
+        // Filter by search query
+        let matchesQuery = true;
+        if (query) {
+            const searchable = `${tx.date || ''} ${tx.description || ''} ${tx.category || ''} ${tx.notes || ''} ${tx.amount || ''}`.toLowerCase();
+            matchesQuery = searchable.includes(query);
+        }
+
+        return matchesFilter && matchesQuery;
+    });
+
+    // Update dynamic subtotal bar
+    let filteredIncome = 0;
+    let filteredExpense = 0;
+    filtered.forEach(tx => {
+        const amt = parseFloat(tx.amount || 0);
+        if (tx.type === 'income') filteredIncome += amt;
+        else if (tx.type === 'expense') filteredExpense += amt;
+    });
+    const filteredNet = filteredIncome - filteredExpense;
+
+    const countEl = document.getElementById('tx-stat-count');
+    const incEl = document.getElementById('tx-stat-income');
+    const expEl = document.getElementById('tx-stat-expense');
+    const netEl = document.getElementById('tx-stat-net');
+
+    if (countEl) countEl.textContent = `${filtered.length} mov.`;
+    if (incEl) incEl.textContent = `+${formatCurrency(filteredIncome)}`;
+    if (expEl) expEl.textContent = `-${formatCurrency(filteredExpense)}`;
+    if (netEl) {
+        netEl.textContent = `${filteredNet >= 0 ? '+' : ''}${formatCurrency(filteredNet)}`;
+        netEl.className = `tx-stat-val ${filteredNet >= 0 ? 'text-green' : 'text-red'}`;
+    }
+
+    if (filtered.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="6" class="text-center" style="padding:32px;color:var(--text-muted)">No hay transacciones que coincidan con los filtros seleccionados.</td></tr>`;
         return;
     }
 
-    transactions.forEach(tx => {
+    filtered.forEach(tx => {
+        const isIncome = tx.type === 'income';
         const tr = document.createElement('tr');
         tr.innerHTML = `
-            <td>${tx.date || '-'}</td>
+            <td style="font-family: var(--font-mono); font-size: 13px; color: var(--text-secondary);">${tx.date || '-'}</td>
             <td>
                 <strong>${tx.description || 'Desconocido'}</strong>
-                ${tx.category ? `<br><span style="font-size:12px;color:var(--text-muted)">${tx.category}</span>` : ''}
-                ${tx.notes    ? `<br><span style="font-size:12px;color:var(--text-muted);font-style:italic">${tx.notes}</span>` : ''}
+                ${tx.notes ? `<br><span style="font-size:11px;color:var(--text-muted);font-style:italic">${tx.notes}</span>` : ''}
             </td>
-            <td class="align-right ${tx.type === 'income' ? 'text-green' : ''}">${formatCurrency(tx.amount)}</td>
-            <td><span class="badge ${tx.type}">${tx.type === 'income' ? 'Ingreso' : 'Gasto'}</span></td>
-            <td><button class="delete-btn" data-id="${tx.id}" title="Eliminar">✕</button></td>
+            <td>
+                <span class="badge" style="background: rgba(255, 255, 255, 0.06); font-size: 11px;">${tx.category || 'General'}</span>
+            </td>
+            <td class="align-right ${isIncome ? 'text-green' : 'text-red'}" style="font-family: var(--font-mono); font-weight: 700;">
+                ${isIncome ? '+' : '-'}${formatCurrency(tx.amount)}
+            </td>
+            <td>
+                <span class="badge ${tx.type}">${isIncome ? 'Ingreso' : 'Gasto'}</span>
+            </td>
+            <td class="align-center">
+                <button class="delete-btn" data-id="${tx.id}" title="Eliminar movimiento">✕</button>
+            </td>
         `;
         tbody.appendChild(tr);
     });
@@ -325,6 +381,25 @@ const renderTransactions = (transactions) => {
     });
 };
 
+const renderTransactions = (transactions) => {
+    currentTransactions = transactions || [];
+    applyTransactionsFilter();
+};
+
+// Hook up transaction filter pills & search input
+document.querySelectorAll('#tx-filter-pills .pill-btn').forEach(btn => {
+    btn.addEventListener('click', (e) => {
+        document.querySelectorAll('#tx-filter-pills .pill-btn').forEach(b => b.classList.remove('active'));
+        e.currentTarget.classList.add('active');
+        activeTxFilter = e.currentTarget.dataset.txFilter;
+        applyTransactionsFilter();
+    });
+});
+
+document.getElementById('tx-search')?.addEventListener('input', () => {
+    applyTransactionsFilter();
+});
+
 // ============================================================
 // LOAD PORTFOLIO (SUPABASE)
 // ============================================================
@@ -333,7 +408,7 @@ const CATEGORY_META = {
     'Inversiones':{ icon: '📈', color: '#008c5b' },
     'Liquidez':   { icon: '💵', color: '#006847' },
     'Ahorro':     { icon: '🏧', color: '#9A6E22' },
-    'Negocios':   { icon: '🛒', color: '#7a288a' }, // Added for Bazarito and Business Assets
+    'Negocios':   { icon: '🛒', color: '#7a288a' }, // E-commerce, Comercio y Storefronts
     'Inmuebles':  { icon: '🏠', color: '#2a9d8f' },
     'Otros':      { icon: '💰', color: '#6B3A1F' },
 };
@@ -391,8 +466,6 @@ const renderPortfolioFromAssets = (assets) => {
                 } else if (a.notes && a.notes.includes('http')) {
                     const m = a.notes.match(/https?:\/\/[^\s]+/);
                     if (m) storeUrl = m[0];
-                } else if (a.name && a.name.toLowerCase().includes('bazarito')) {
-                    storeUrl = 'https://smileygz.github.io/Bazarito-cancun';
                 }
 
                 // Clean notes display if URL is in notes
@@ -469,7 +542,7 @@ const renderPortfolioChart = (labels, data) => {
         '#00A859', // Esmeralda: Inversiones / Bolsa / FIBRAs
         '#FFC72C', // Oro Solar: CETES / Liquidez / Ahorro
         '#38BDF8', // Banxico Blue: Préstamos Otorgados
-        '#A855F7', // Modern Purple: Negocios / Storefronts (Bazarito, etc.)
+        '#A855F7', // Modern Purple: Negocios / Storefronts
         '#FB923C', // Naranja Cobre: Rentas / Inmuebles
         '#F43F5E', // Rosa Mexicano
         '#2DD4BF', // Turquesa Caribe
@@ -713,38 +786,61 @@ const renderInvestmentsTable = () => {
     filtered.forEach(h => {
         const meta = ASSET_TYPE_META[h.asset_type] || ASSET_TYPE_META['otro'];
         const isPositive = h.pnl >= 0;
-        const pnlClass = isPositive ? 'pnl-positive' : 'pnl-negative';
+        const isNeutral = Math.abs(h.pnl) < 0.001;
         const pnlSign = isPositive ? '+' : '';
+        const arrow = isNeutral ? '—' : (isPositive ? '▲' : '▼');
+        const pnlPillClass = isNeutral ? 'neutral' : (isPositive ? 'pos' : 'neg');
+        const meterFillWidth = Math.min(100, Math.max(8, Math.abs(h.pnlPct)));
+        const meterClass = isPositive ? 'gain' : 'loss';
+        const marketLabel = h.asset_type === 'cetes' ? 'Banxico / Directo' : (h.asset_type === 'fibra' ? 'BMV' : 'SIC / BMV');
 
         const tr = document.createElement('tr');
         tr.innerHTML = `
             <td>
-                <strong>${h.ticker}</strong>
-                <br><span style="font-size: 12px; color: var(--text-muted);">${h.name}</span>
+                <div class="ticker-cell">
+                    <div class="ticker-icon ${meta.badgeClass}">
+                        ${h.ticker.substring(0, 3)}
+                    </div>
+                    <div class="ticker-title-group">
+                        <span class="ticker-code">${h.ticker}</span>
+                        <span class="ticker-name" title="${h.name}">${h.name}</span>
+                        <span class="broker-tag">🏛️ ${h.broker || 'GBM+'}</span>
+                    </div>
+                </div>
             </td>
             <td>
-                <span class="badge ${meta.badgeClass}">${meta.icon} ${meta.label}</span>
+                <div style="display: flex; flex-direction: column; gap: 3px;">
+                    <span class="badge ${meta.badgeClass}" style="width: fit-content;">${meta.icon} ${meta.label}</span>
+                    <span style="font-size: 10px; color: var(--text-muted); font-family: var(--font-mono);">${marketLabel}</span>
+                </div>
             </td>
-            <td class="align-right">
-                ${Number.isInteger(h.totalShares) ? h.totalShares : h.totalShares.toFixed(4)}
+            <td class="align-right" style="font-family: var(--font-mono); font-weight: 600;">
+                ${Number.isInteger(h.totalShares) ? h.totalShares.toLocaleString() : h.totalShares.toFixed(4)}
             </td>
-            <td class="align-right">
+            <td class="align-right" style="font-family: var(--font-mono); color: var(--text-secondary);">
                 ${formatCurrency(h.avgCost)}
             </td>
             <td class="align-right">
-                <span class="price-tag-clickable btn-edit-price" data-id="${h.id}" data-ticker="${h.ticker}" data-price="${h.currentPrice}" title="Clic para actualizar precio">
-                    ${formatCurrency(h.currentPrice)} ✏️
-                </span>
+                <div class="price-meter-container">
+                    <span class="price-tag-clickable btn-edit-price" data-id="${h.id}" data-ticker="${h.ticker}" data-price="${h.currentPrice}" title="Clic para actualizar precio">
+                        ${formatCurrency(h.currentPrice)} ✏️
+                    </span>
+                    <div class="price-meter-bar" title="Rendimiento: ${pnlSign}${h.pnlPct.toFixed(2)}%">
+                        <div class="price-meter-fill ${meterClass}" style="width: ${meterFillWidth}%;"></div>
+                    </div>
+                </div>
             </td>
-            <td class="align-right">
+            <td class="align-right" style="font-family: var(--font-mono); color: var(--text-secondary);">
                 ${formatCurrency(h.totalInvested)}
             </td>
-            <td class="align-right text-gold" style="font-weight: 600;">
+            <td class="align-right" style="font-family: var(--font-mono); font-weight: 700; color: var(--azteca-gold);">
                 ${formatCurrency(h.marketValue)}
             </td>
-            <td class="align-right ${pnlClass}">
-                ${pnlSign}${formatCurrency(h.pnl)}
-                <br><span style="font-size: 11px;">(${pnlSign}${h.pnlPct.toFixed(2)}%)</span>
+            <td class="align-right">
+                <div class="pnl-pill ${pnlPillClass}">
+                    <span>${arrow} ${pnlSign}${formatCurrency(h.pnl)}</span>
+                    <span class="pnl-pct-tag">${pnlSign}${h.pnlPct.toFixed(2)}%</span>
+                </div>
             </td>
             <td class="align-center">
                 <button class="action-btn-sm btn-view-lots" data-id="${h.id}" data-ticker="${h.ticker}" title="Ver compras registradas">
@@ -1766,20 +1862,23 @@ const updateAuthUI = (user) => {
     const btnOpenAuth = document.getElementById('btn-open-auth');
     const profileBadge = document.getElementById('user-profile-badge');
     const emailDisplay = document.getElementById('user-email-display');
+    const dropdownEmail = document.getElementById('dropdown-user-email');
     const initialsDisplay = document.getElementById('user-avatar-initials');
 
-    if (user) {
+    if (user && user.email) {
         if (btnOpenAuth) btnOpenAuth.classList.add('hidden');
         if (profileBadge) profileBadge.classList.remove('hidden');
 
-        const email = user.email || 'Usuario';
+        const email = user.email;
         if (emailDisplay) emailDisplay.textContent = email;
+        if (dropdownEmail) dropdownEmail.textContent = email;
         if (initialsDisplay) {
             initialsDisplay.textContent = email.charAt(0).toUpperCase();
         }
     } else {
         if (btnOpenAuth) btnOpenAuth.classList.remove('hidden');
         if (profileBadge) profileBadge.classList.add('hidden');
+        document.getElementById('user-dropdown')?.classList.add('hidden');
     }
 };
 
