@@ -233,13 +233,19 @@
                 </div>
 
                 <!-- SECTION 3: Business Assets, Storefronts & Liquidity -->
-                <div style="margin-top: 36px; margin-bottom: 14px;">
-                    <h3 style="font-family: var(--font-heading); font-size: 19px; color: var(--text-on-dark); display: flex; align-items: center; gap: 8px;">
-                        <span>🛒</span> Negocios, Cuentas y Activos del Hub
-                    </h3>
-                    <p style="color: var(--text-secondary); font-size: 13px; margin-top: 2px;">
-                        Activos comerciales de storefronts (Bazarito, Secretitos, etc.), ahorro y liquidez.
-                    </p>
+                <div style="margin-top: 36px; margin-bottom: 14px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px;">
+                    <div>
+                        <h3 style="font-family: var(--font-heading); font-size: 19px; color: var(--text-on-dark); display: flex; align-items: center; gap: 8px;">
+                            <span>🛒</span> Negocios, Cuentas y Activos del Hub
+                        </h3>
+                        <p style="color: var(--text-secondary); font-size: 13px; margin-top: 2px;">
+                            Activos comerciales de storefronts (Bazarito, Secretitos, etc.), ahorro y liquidez operativa.
+                        </p>
+                    </div>
+                    <button id="btn-open-add-asset" class="btn btn-primary" style="padding: 8px 16px; font-size: 13px; display: flex; align-items: center; gap: 6px;">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+                        Nuevo Negocio / Activo
+                    </button>
                 </div>
                 <div class="portfolio-grid" id="portfolio-grid">
                     <div class="portfolio-card glass-panel">
@@ -692,11 +698,76 @@
         </div>
     </div>
 
+    <!-- Add Business / Asset Modal -->
+    <div id="modal-asset" class="modal-overlay hidden">
+        <div class="modal-box glass-panel" style="max-width: 500px;">
+            <div class="modal-header">
+                <h3 id="asset-modal-title">🛒 Registrar Nuevo Negocio o Activo</h3>
+                <button id="asset-modal-close" class="modal-close-btn">&times;</button>
+            </div>
+            <form id="asset-form">
+                <div class="form-group">
+                    <label for="asset-name">Nombre del Negocio o Activo</label>
+                    <input type="text" id="asset-name" class="glass-input" placeholder="Ej. Bazarito Cancún, Litros Express..." required>
+                </div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="asset-category">Categoría</label>
+                        <select id="asset-category" class="glass-input" required>
+                            <option value="Negocios" selected>🛒 Negocios / Storefront</option>
+                            <option value="Liquidez">💵 Liquidez / Caja Chica</option>
+                            <option value="Ahorro">🏧 Ahorro / Fondo</option>
+                            <option value="Otros">💰 Otros Activos</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="asset-value">Valuación / Capital ($ MXN)</label>
+                        <input type="number" id="asset-value" class="glass-input" step="0.01" placeholder="0.00" value="0.00" required>
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label for="asset-url">Enlace Web / Tienda Online (Opcional)</label>
+                    <input type="url" id="asset-url" class="glass-input" placeholder="https://smileygz.github.io/Bazarito-cancun">
+                </div>
+                <div class="form-group">
+                    <label for="asset-notes">Descripción o Notas</label>
+                    <input type="text" id="asset-notes" class="glass-input" placeholder="Bazar de ropa y accesorios en Cancún">
+                </div>
+                <div class="modal-footer">
+                    <button type="button" id="btn-cancel-asset" class="btn btn-ghost">Cancelar</button>
+                    <button type="submit" class="btn btn-primary">Guardar Negocio</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Edit Asset Value Modal -->
+    <div id="modal-edit-asset" class="modal-overlay hidden">
+        <div class="modal-box glass-panel" style="max-width: 420px;">
+            <div class="modal-header">
+                <h3 id="edit-asset-title">✏️ Actualizar Valuación / Capital</h3>
+                <button id="edit-asset-close" class="modal-close-btn">&times;</button>
+            </div>
+            <form id="edit-asset-form">
+                <input type="hidden" id="edit-asset-id">
+                <p id="edit-asset-name-label" style="color: var(--mexican-gold); font-size: 14px; font-weight: 600; margin-bottom: 12px;"></p>
+                <div class="form-group">
+                    <label for="edit-asset-new-value">Valuación / Capital Actual ($ MXN)</label>
+                    <input type="number" id="edit-asset-new-value" class="glass-input" step="0.01" required>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" id="btn-cancel-edit-asset" class="btn btn-ghost">Cancelar</button>
+                    <button type="submit" class="btn btn-primary">Guardar Cambios</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
     <!-- Toast Notification -->
     <div id="toast" class="toast hidden"></div>
 
     <!-- Custom Logic -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
-    <script src="app.js?v=20260917_v5"></script>
+    <script src="app.js?v=20260917_v6"></script>
 </body>
 </html>

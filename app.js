@@ -374,16 +374,77 @@ const renderPortfolioFromAssets = (assets) => {
 
             items.forEach(a => {
                 const icon = a.icon || meta.icon;
+                const safeName = (a.name || '').replace(/"/g, '&quot;');
+
+                // Detect storefront URL
+                let storeUrl = '';
+                if (a.url) {
+                    storeUrl = a.url;
+                } else if (a.notes && a.notes.includes('http')) {
+                    const m = a.notes.match(/https?:\/\/[^\s]+/);
+                    if (m) storeUrl = m[0];
+                } else if (a.name && a.name.toLowerCase().includes('bazarito')) {
+                    storeUrl = 'https://smileygz.github.io/Bazarito-cancun';
+                }
+
+                // Clean notes display if URL is in notes
+                const displayNotes = (a.notes || '').replace(/https?:\/\/[^\s]+/, '').replace(/\|\s*URL:?\s*/i, '').trim();
+
                 grid.innerHTML += `
-                    <div class="portfolio-card glass-panel">
-                        <div class="p-card-header">
-                            <h4>${icon} ${a.name}</h4>
+                    <div class="portfolio-card glass-panel" style="display: flex; flex-direction: column; justify-content: space-between;">
+                        <div>
+                            <div class="p-card-header" style="display: flex; justify-content: space-between; align-items: flex-start; gap: 8px;">
+                                <h4 style="font-size: 15px; word-break: break-word;">${icon} ${a.name}</h4>
+                                <button class="delete-btn btn-delete-asset" data-id="${a.id}" data-name="${safeName}" title="Eliminar negocio/activo" style="font-size: 11px; padding: 2px 7px;">✕</button>
+                            </div>
+                            <p class="p-card-amount" style="margin-top: 8px;">${formatCurrency(parseFloat(a.value || 0))}</p>
+                            ${displayNotes ? `<p style="color:var(--text-muted); font-size: 12px; margin-top: 6px; line-height: 1.4;">${displayNotes}</p>` : ''}
                         </div>
-                        <p class="p-card-amount">${formatCurrency(parseFloat(a.value || 0))}</p>
-                        <p style="color:var(--text-muted); font-size: 12px; margin-top: 4px;">${a.notes || ''}</p>
+                        <div style="margin-top: 14px; padding-top: 10px; border-top: 1px solid rgba(255,255,255,0.06); display: flex; gap: 8px; flex-wrap: wrap; align-items: center;">
+                            ${storeUrl ? `
+                                <a href="${storeUrl}" target="_blank" rel="noopener noreferrer" class="btn-action-loan" style="text-decoration: none; display: inline-flex; align-items: center; gap: 4px; font-size: 11px; padding: 4px 9px; color: var(--mexican-gold); border-color: var(--mexican-gold);">
+                                    <span>Tienda en Vivo</span> ↗
+                                </a>
+                            ` : ''}
+                            <button class="btn-action-loan btn-edit-asset-val" data-id="${a.id}" data-name="${safeName}" data-value="${a.value || 0}" style="font-size: 11px; padding: 4px 9px;">
+                                ✏️ Valuación
+                            </button>
+                        </div>
                     </div>`;
             });
         }
+    }
+
+    if (grid) {
+        // Delete Asset listener
+        grid.querySelectorAll('.btn-delete-asset').forEach(btn => {
+            btn.addEventListener('click', async (e) => {
+                e.stopPropagation();
+                const id = btn.dataset.id;
+                const name = btn.dataset.name;
+                if (!confirm(`¿Estás seguro de eliminar "${name}" del portafolio?`)) return;
+                try {
+                    const { error } = await supabaseClient.from('finance_portfolio').delete().eq('id', id);
+                    if (error) throw error;
+                    showToast(`🗑️ "${name}" eliminado con éxito.`, 'info');
+                    await loadSavingsData();
+                } catch (err) {
+                    console.error('Error deleting asset:', err);
+                    showToast('Error al eliminar negocio/activo.', 'error');
+                }
+            });
+        });
+
+        // Edit Asset Valuation listener
+        grid.querySelectorAll('.btn-edit-asset-val').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                const id = btn.dataset.id;
+                const name = btn.dataset.name;
+                const val = btn.dataset.value;
+                openEditAssetModal(id, name, val);
+            });
+        });
     }
 
     renderPortfolioChart(chartLabels, chartData);
@@ -1573,6 +1634,119 @@ document.getElementById('rental-form')?.addEventListener('submit', async (e) => 
     } catch (err) {
         console.error('Error saving rental:', err);
         showToast('Error al guardar propiedad en Supabase.', 'error');
+    }
+});
+
+// ============================================================
+// MODALS: BUSINESS & ASSETS
+// ============================================================
+const openAddAssetModal = () => {
+    document.getElementById('asset-form')?.reset();
+    const catSelect = document.getElementById('asset-category');
+    if (catSelect) catSelect.value = 'Negocios';
+    const valInput = document.getElementById('asset-value');
+    if (valInput) valInput.value = '0.00';
+    document.getElementById('modal-asset')?.classList.remove('hidden');
+};
+
+const closeAddAssetModal = () => {
+    document.getElementById('modal-asset')?.classList.add('hidden');
+};
+
+const openEditAssetModal = (id, name, currentValue) => {
+    const idInput = document.getElementById('edit-asset-id');
+    const nameLabel = document.getElementById('edit-asset-name-label');
+    const valInput = document.getElementById('edit-asset-new-value');
+    if (idInput) idInput.value = id;
+    if (nameLabel) nameLabel.textContent = `Activo: ${name}`;
+    if (valInput) valInput.value = parseFloat(currentValue || 0).toFixed(2);
+    document.getElementById('modal-edit-asset')?.classList.remove('hidden');
+};
+
+const closeEditAssetModal = () => {
+    document.getElementById('modal-edit-asset')?.classList.add('hidden');
+};
+
+document.getElementById('btn-open-add-asset')?.addEventListener('click', openAddAssetModal);
+document.getElementById('asset-modal-close')?.addEventListener('click', closeAddAssetModal);
+document.getElementById('btn-cancel-asset')?.addEventListener('click', closeAddAssetModal);
+document.getElementById('modal-asset')?.addEventListener('click', (e) => {
+    if (e.target === document.getElementById('modal-asset')) closeAddAssetModal();
+});
+
+document.getElementById('edit-asset-close')?.addEventListener('click', closeEditAssetModal);
+document.getElementById('btn-cancel-edit-asset')?.addEventListener('click', closeEditAssetModal);
+document.getElementById('modal-edit-asset')?.addEventListener('click', (e) => {
+    if (e.target === document.getElementById('modal-edit-asset')) closeEditAssetModal();
+});
+
+// Form: Add Asset / Business
+document.getElementById('asset-form')?.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const name = document.getElementById('asset-name').value.trim();
+    const category = document.getElementById('asset-category').value;
+    const value = parseFloat(document.getElementById('asset-value').value || 0);
+    const url = document.getElementById('asset-url').value.trim();
+    let notes = document.getElementById('asset-notes').value.trim();
+
+    if (!name) {
+        showToast('El nombre del activo es obligatorio.', 'error');
+        return;
+    }
+
+    if (url) {
+        notes = notes ? `${notes} | URL: ${url}` : `URL: ${url}`;
+    }
+
+    const iconMap = {
+        'Negocios': '🛒',
+        'Liquidez': '💵',
+        'Ahorro': '🏧',
+        'Otros': '💰'
+    };
+
+    try {
+        const { error } = await supabaseClient
+            .from('finance_portfolio')
+            .insert([{
+                name,
+                category,
+                value,
+                notes,
+                icon: iconMap[category] || '🛒'
+            }]);
+
+        if (error) throw error;
+
+        closeAddAssetModal();
+        showToast(`✅ "${name}" registrado correctamente!`, 'success');
+        await loadSavingsData();
+    } catch (err) {
+        console.error('Error saving business/asset:', err);
+        showToast('Error al guardar en Supabase.', 'error');
+    }
+});
+
+// Form: Edit Asset Valuation
+document.getElementById('edit-asset-form')?.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const id = document.getElementById('edit-asset-id').value;
+    const val = parseFloat(document.getElementById('edit-asset-new-value').value || 0);
+
+    try {
+        const { error } = await supabaseClient
+            .from('finance_portfolio')
+            .update({ value: val })
+            .eq('id', id);
+
+        if (error) throw error;
+
+        closeEditAssetModal();
+        showToast('✅ Valuación actualizada exitosamente!', 'success');
+        await loadSavingsData();
+    } catch (err) {
+        console.error('Error updating asset valuation:', err);
+        showToast('Error al actualizar valuación en Supabase.', 'error');
     }
 });
 
