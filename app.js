@@ -17,6 +17,14 @@ const updateStatusIndicator = () => {
 let cashflowChartInstance = null;
 let portfolioChartInstance = null;
 let currentYear = new Date().getFullYear().toString();
+let currentUser = null;
+
+const withUser = (row) => {
+    if (currentUser && currentUser.id) {
+        return { ...row, user_id: currentUser.id };
+    }
+    return row;
+};
 
 // ============================================================
 // UTILS
@@ -75,7 +83,7 @@ document.getElementById('tx-form').addEventListener('submit', async (e) => {
 
     try {
         // En Supabase table, the columns are: date, description, amount, type, category, notes
-        const { error } = await supabaseClient.from('finance_transactions').insert([tx]);
+        const { error } = await supabaseClient.from('finance_transactions').insert([withUser(tx)]);
         if (error) throw error;
 
         closeModal();
@@ -844,7 +852,7 @@ document.getElementById('inv-form')?.addEventListener('submit', async (e) => {
 
             const { data: inserted, error: insertErr } = await supabaseClient
                 .from('finance_portfolio')
-                .insert([newPortfolioRow])
+                .insert([withUser(newPortfolioRow)])
                 .select();
 
             if (insertErr) throw insertErr;
@@ -878,7 +886,7 @@ document.getElementById('inv-form')?.addEventListener('submit', async (e) => {
 
         const { error: lotErr } = await supabaseClient
             .from('finance_investment_lots')
-            .insert([lotRow]);
+            .insert([withUser(lotRow)]);
 
         if (lotErr) {
             console.warn('Could not insert to finance_investment_lots (schema may need update):', lotErr);
@@ -1456,17 +1464,17 @@ document.getElementById('loan-form')?.addEventListener('submit', async (e) => {
             notes
         };
 
-        const { error } = await supabaseClient.from('finance_loans').insert([loanRow]);
+        const { error } = await supabaseClient.from('finance_loans').insert([withUser(loanRow)]);
         if (error) throw error;
 
         // Sync to finance_portfolio
-        await supabaseClient.from('finance_portfolio').insert([{
+        await supabaseClient.from('finance_portfolio').insert([withUser({
             name: borrower,
             category: 'Préstamos',
             value: balance,
             notes: `Tasa: ${rate}%/mes - Corte día ${day}`,
             icon: '🏦'
-        }]);
+        })]);
 
         closeAddLoanModal();
         showToast(`✅ Préstamo a "${borrower}" registrado!`, 'success');
@@ -1526,14 +1534,14 @@ document.getElementById('loan-action-form')?.addEventListener('submit', async (e
                 .eq('id', id);
 
             // Record transaction in finance_transactions
-            await supabaseClient.from('finance_transactions').insert([{
+            await supabaseClient.from('finance_transactions').insert([withUser({
                 date,
                 description: `${loan.borrower} — Abono Capital`,
                 amount,
                 type: 'income',
                 category: 'Tía — Abono Capital',
                 notes: notes || `Abono al préstamo. Nuevo saldo: ${formatCurrency(newBal)}`
-            }]);
+            })]);
 
             // Sync with finance_portfolio row
             await supabaseClient
@@ -1544,14 +1552,14 @@ document.getElementById('loan-action-form')?.addEventListener('submit', async (e
             showToast(`✅ Abono de ${formatCurrency(amount)} aplicado. Saldo: ${formatCurrency(newBal)}`, 'success');
         } else {
             // Interest payment
-            await supabaseClient.from('finance_transactions').insert([{
+            await supabaseClient.from('finance_transactions').insert([withUser({
                 date,
                 description: `${loan.borrower} — Interés Recibido`,
                 amount,
                 type: 'income',
                 category: 'Tía — Interés Recibido',
                 notes: notes || `Cobro de interés pactado`
-            }]);
+            })]);
 
             showToast(`✅ Interés de ${formatCurrency(amount)} registrado como Ingreso!`, 'success');
         }
@@ -1615,17 +1623,17 @@ document.getElementById('rental-form')?.addEventListener('submit', async (e) => 
             notes
         };
 
-        const { error } = await supabaseClient.from('finance_rentals').insert([rentalRow]);
+        const { error } = await supabaseClient.from('finance_rentals').insert([withUser(rentalRow)]);
         if (error) throw error;
 
         // Sync to finance_portfolio
-        await supabaseClient.from('finance_portfolio').insert([{
+        await supabaseClient.from('finance_portfolio').insert([withUser({
             name,
             category: 'Inmuebles',
             value: val,
             notes: `Renta neta: ${formatCurrency(rent - exp)}/mes - Inquilino: ${tenant || 'N/A'}`,
             icon: '🏠'
-        }]);
+        })]);
 
         closeAddRentalModal();
         showToast(`✅ Propiedad "${name}" registrada!`, 'success');
@@ -1708,13 +1716,13 @@ document.getElementById('asset-form')?.addEventListener('submit', async (e) => {
     try {
         const { error } = await supabaseClient
             .from('finance_portfolio')
-            .insert([{
+            .insert([withUser({
                 name,
                 category,
                 value,
                 notes,
                 icon: iconMap[category] || '🛒'
-            }]);
+            })]);
 
         if (error) throw error;
 
@@ -1751,10 +1759,270 @@ document.getElementById('edit-asset-form')?.addEventListener('submit', async (e)
 });
 
 // ============================================================
+// FASE 3: AUTHENTICATION & SAAS MULTI-TENANCY
+// ============================================================
+const updateAuthUI = (user) => {
+    currentUser = user;
+    const btnOpenAuth = document.getElementById('btn-open-auth');
+    const profileBadge = document.getElementById('user-profile-badge');
+    const emailDisplay = document.getElementById('user-email-display');
+    const initialsDisplay = document.getElementById('user-avatar-initials');
+
+    if (user) {
+        if (btnOpenAuth) btnOpenAuth.classList.add('hidden');
+        if (profileBadge) profileBadge.classList.remove('hidden');
+
+        const email = user.email || 'Usuario';
+        if (emailDisplay) emailDisplay.textContent = email;
+        if (initialsDisplay) {
+            initialsDisplay.textContent = email.charAt(0).toUpperCase();
+        }
+    } else {
+        if (btnOpenAuth) btnOpenAuth.classList.remove('hidden');
+        if (profileBadge) profileBadge.classList.add('hidden');
+    }
+};
+
+const openAuthModal = (tab = 'login') => {
+    switchAuthTab(tab);
+    document.getElementById('modal-auth')?.classList.remove('hidden');
+};
+
+const closeAuthModal = () => {
+    document.getElementById('modal-auth')?.classList.add('hidden');
+};
+
+const switchAuthTab = (tabName) => {
+    document.querySelectorAll('.auth-tab-btn').forEach(btn => {
+        btn.classList.toggle('active', btn.dataset.tab === tabName);
+    });
+
+    const loginForm = document.getElementById('auth-login-form');
+    const signupForm = document.getElementById('auth-signup-form');
+    const magicForm = document.getElementById('auth-magic-form');
+
+    if (loginForm) loginForm.classList.toggle('hidden', tabName !== 'login');
+    if (signupForm) signupForm.classList.toggle('hidden', tabName !== 'signup');
+    if (magicForm) magicForm.classList.toggle('hidden', tabName !== 'magic');
+};
+
+const openPricingModal = () => {
+    document.getElementById('user-dropdown')?.classList.add('hidden');
+    document.getElementById('modal-pricing')?.classList.remove('hidden');
+};
+
+const closePricingModal = () => {
+    document.getElementById('modal-pricing')?.classList.add('hidden');
+};
+
+const refreshAllData = async () => {
+    await loadSavingsData();
+    await loadInvestmentsData();
+    await loadYearlyData(currentYear);
+};
+
+const initAuth = async () => {
+    try {
+        const { data: { session } } = await supabaseClient.auth.getSession();
+        updateAuthUI(session?.user || null);
+
+        supabaseClient.auth.onAuthStateChange(async (event, session) => {
+            const previousUserId = currentUser?.id;
+            updateAuthUI(session?.user || null);
+
+            if (event === 'SIGNED_IN') {
+                showToast(`👋 ¡Bienvenido, ${session.user.email}!`, 'success');
+                closeAuthModal();
+                if (previousUserId !== session.user.id) {
+                    await refreshAllData();
+                }
+            } else if (event === 'SIGNED_OUT') {
+                showToast('Has cerrado sesión.', 'info');
+                await refreshAllData();
+            }
+        });
+    } catch (err) {
+        console.warn('Auth initialization warning:', err);
+    }
+};
+
+// Auth Modal triggers
+document.getElementById('btn-open-auth')?.addEventListener('click', () => openAuthModal('login'));
+document.getElementById('auth-modal-close')?.addEventListener('click', closeAuthModal);
+document.getElementById('btn-cancel-auth')?.addEventListener('click', closeAuthModal);
+document.querySelectorAll('.btn-cancel-auth-generic').forEach(b => b.addEventListener('click', closeAuthModal));
+document.getElementById('modal-auth')?.addEventListener('click', (e) => {
+    if (e.target === document.getElementById('modal-auth')) closeAuthModal();
+});
+
+// Auth tab buttons
+document.querySelectorAll('.auth-tab-btn').forEach(btn => {
+    btn.addEventListener('click', () => switchAuthTab(btn.dataset.tab));
+});
+
+// Pricing Modal triggers
+document.getElementById('sidebar-link-pricing')?.addEventListener('click', (e) => {
+    e.preventDefault();
+    openPricingModal();
+});
+document.getElementById('menu-btn-pricing')?.addEventListener('click', openPricingModal);
+document.getElementById('pricing-modal-close')?.addEventListener('click', closePricingModal);
+document.getElementById('btn-starter-plan')?.addEventListener('click', closePricingModal);
+document.getElementById('btn-activate-pro')?.addEventListener('click', () => {
+    showToast('⭐ ¡Tu cuenta tiene acceso anticipado al Plan Pro!', 'success');
+    closePricingModal();
+});
+document.getElementById('modal-pricing')?.addEventListener('click', (e) => {
+    if (e.target === document.getElementById('modal-pricing')) closePricingModal();
+});
+
+// User profile dropdown
+const userBadge = document.getElementById('user-profile-badge');
+userBadge?.addEventListener('click', (e) => {
+    e.stopPropagation();
+    const dropdown = document.getElementById('user-dropdown');
+    if (dropdown) dropdown.classList.toggle('hidden');
+});
+
+document.addEventListener('click', (e) => {
+    const dropdown = document.getElementById('user-dropdown');
+    if (dropdown && !dropdown.contains(e.target) && e.target !== userBadge) {
+        dropdown.classList.add('hidden');
+    }
+});
+
+// Auth Forms
+document.getElementById('auth-login-form')?.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const email = document.getElementById('login-email').value.trim();
+    const password = document.getElementById('login-password').value;
+    const submitBtn = document.getElementById('btn-submit-login');
+
+    if (submitBtn) { submitBtn.disabled = true; submitBtn.textContent = 'Verificando...'; }
+
+    try {
+        const { data, error } = await supabaseClient.auth.signInWithPassword({ email, password });
+        if (error) throw error;
+        closeAuthModal();
+        showToast('✅ Sesión iniciada correctamente!', 'success');
+    } catch (err) {
+        console.error('Login error:', err);
+        showToast(err.message || 'Error al iniciar sesión.', 'error');
+    } finally {
+        if (submitBtn) { submitBtn.disabled = false; submitBtn.textContent = 'Entrar'; }
+    }
+});
+
+document.getElementById('auth-signup-form')?.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const email = document.getElementById('signup-email').value.trim();
+    const password = document.getElementById('signup-password').value;
+    const submitBtn = document.getElementById('btn-submit-signup');
+
+    if (submitBtn) { submitBtn.disabled = true; submitBtn.textContent = 'Creando cuenta...'; }
+
+    try {
+        const { data, error } = await supabaseClient.auth.signUp({ email, password });
+        if (error) throw error;
+
+        if (data.session) {
+            closeAuthModal();
+            showToast('🎉 ¡Cuenta creada y sesión iniciada!', 'success');
+        } else {
+            closeAuthModal();
+            showToast('📧 Por favor revisa tu correo para confirmar tu cuenta.', 'info');
+        }
+    } catch (err) {
+        console.error('Sign up error:', err);
+        showToast(err.message || 'Error al crear la cuenta.', 'error');
+    } finally {
+        if (submitBtn) { submitBtn.disabled = false; submitBtn.textContent = 'Crear Bóveda'; }
+    }
+});
+
+document.getElementById('auth-magic-form')?.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const email = document.getElementById('magic-email').value.trim();
+    const submitBtn = document.getElementById('btn-submit-magic');
+
+    if (submitBtn) { submitBtn.disabled = true; submitBtn.textContent = 'Enviando enlace...'; }
+
+    try {
+        const { error } = await supabaseClient.auth.signInWithOtp({
+            email,
+            options: { emailRedirectTo: window.location.origin + window.location.pathname }
+        });
+        if (error) throw error;
+        closeAuthModal();
+        showToast('📬 Revisa tu correo, te hemos enviado el enlace de acceso!', 'info');
+    } catch (err) {
+        console.error('Magic link error:', err);
+        showToast(err.message || 'Error al enviar enlace.', 'error');
+    } finally {
+        if (submitBtn) { submitBtn.disabled = false; submitBtn.textContent = 'Enviar Magic Link'; }
+    }
+});
+
+document.getElementById('btn-google-auth')?.addEventListener('click', async () => {
+    try {
+        const { error } = await supabaseClient.auth.signInWithOAuth({
+            provider: 'google',
+            options: { redirectTo: window.location.origin + window.location.pathname }
+        });
+        if (error) throw error;
+    } catch (err) {
+        console.error('Google OAuth error:', err);
+        showToast('Google OAuth no configurado en Supabase o bloqueado.', 'error');
+    }
+});
+
+document.getElementById('menu-btn-logout')?.addEventListener('click', async () => {
+    try {
+        document.getElementById('user-dropdown')?.classList.add('hidden');
+        await supabaseClient.auth.signOut();
+        showToast('Has cerrado sesión.', 'info');
+    } catch (err) {
+        console.error('Sign out error:', err);
+    }
+});
+
+document.getElementById('menu-btn-claim-data')?.addEventListener('click', async () => {
+    document.getElementById('user-dropdown')?.classList.add('hidden');
+    if (!currentUser) {
+        showToast('Inicia sesión para reclamar tus datos históricos.', 'error');
+        return;
+    }
+    if (!confirm('¿Deseas asignar todos los registros previos de UCP a tu cuenta actual?')) return;
+
+    try {
+        // Try the stored function first
+        const { error: rpcError } = await supabaseClient.rpc('claim_all_legacy_data', {
+            target_user_id: currentUser.id
+        });
+
+        if (rpcError) {
+            // Direct update fallback
+            await supabaseClient.from('finance_transactions').update({ user_id: currentUser.id }).is('user_id', null);
+            await supabaseClient.from('finance_portfolio').update({ user_id: currentUser.id }).is('user_id', null);
+            await supabaseClient.from('finance_investment_lots').update({ user_id: currentUser.id }).is('user_id', null);
+            await supabaseClient.from('finance_loans').update({ user_id: currentUser.id }).is('user_id', null);
+            await supabaseClient.from('finance_rentals').update({ user_id: currentUser.id }).is('user_id', null);
+        }
+
+        showToast('✅ ¡Datos históricos vinculados exitosamente a tu cuenta!', 'success');
+        await refreshAllData();
+    } catch (err) {
+        console.error('Claim data error:', err);
+        showToast('Error vinculando datos históricos.', 'error');
+    }
+});
+
+// ============================================================
 // INIT
 // ============================================================
 const initApp = async () => {
     updateStatusIndicator();
+    await initAuth();
 
     // Year selector
     const selector = document.getElementById('year-selector');
