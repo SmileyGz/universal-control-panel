@@ -144,15 +144,15 @@ const renderCashflowChart = (data) => {
                 {
                     label: 'Ingresos',
                     data: data.income,
-                    backgroundColor: 'rgba(0, 140, 91, 0.85)',
-                    hoverBackgroundColor: 'rgba(0, 180, 115, 1)',
+                    backgroundColor: 'rgba(0, 168, 89, 0.85)',
+                    hoverBackgroundColor: 'rgba(0, 200, 105, 1)',
                     borderRadius: 6
                 },
                 {
                     label: 'Gastos',
                     data: data.expenses,
-                    backgroundColor: 'rgba(206, 17, 38, 0.8)',
-                    hoverBackgroundColor: 'rgba(232, 41, 60, 1)',
+                    backgroundColor: 'rgba(229, 57, 53, 0.85)',
+                    hoverBackgroundColor: 'rgba(255, 77, 77, 1)',
                     borderRadius: 6
                 }
             ]
@@ -162,16 +162,42 @@ const renderCashflowChart = (data) => {
             maintainAspectRatio: false,
             plugins: {
                 legend: {
-                    labels: { color: '#C8973A', font: { family: 'Outfit', size: 13 }, boxWidth: 12, borderRadius: 4 }
+                    labels: {
+                        color: '#F8FAF9',
+                        font: { family: 'Outfit', size: 13, weight: '600' },
+                        boxWidth: 12,
+                        borderRadius: 4
+                    }
                 },
                 tooltip: {
-                    backgroundColor: 'rgba(10, 16, 13, 0.95)', titleColor: '#C8973A', bodyColor: '#F2F2EF',
-                    borderColor: 'rgba(0, 104, 71, 0.4)', borderWidth: 1
+                    backgroundColor: 'rgba(9, 17, 14, 0.95)',
+                    titleColor: '#FFC72C',
+                    bodyColor: '#F8FAF9',
+                    borderColor: 'rgba(0, 168, 89, 0.4)',
+                    borderWidth: 1,
+                    titleFont: { family: 'Outfit', weight: 'bold' },
+                    bodyFont: { family: 'JetBrains Mono' },
+                    callbacks: {
+                        label: (ctx) => ` ${ctx.dataset.label}: ${formatCurrency(ctx.parsed.y)}`
+                    }
                 }
             },
             scales: {
-                y: { grid: { color: 'rgba(0, 104, 71, 0.12)' }, ticks: { color: '#9A6E22', font: { family: 'Inter' } } },
-                x: { grid: { display: false }, ticks: { color: '#9A6E22', font: { family: 'Inter' } } }
+                y: {
+                    grid: { color: 'rgba(0, 168, 89, 0.12)' },
+                    ticks: {
+                        color: '#7E988C',
+                        font: { family: 'JetBrains Mono', size: 11 },
+                        callback: (value) => '$' + value.toLocaleString('es-MX')
+                    }
+                },
+                x: {
+                    grid: { display: false },
+                    ticks: {
+                        color: '#C3D5CC',
+                        font: { family: 'Inter', size: 12, weight: '500' }
+                    }
+                }
             }
         }
     });
@@ -369,22 +395,58 @@ const renderPortfolioChart = (labels, data) => {
     const ctx = canvas.getContext('2d');
     if (portfolioChartInstance) portfolioChartInstance.destroy();
 
+    // Vibrant FinTech Aztec Color Palette for Asset Classes
+    const assetColors = [
+        '#00A859', // Esmeralda: Inversiones / Bolsa / FIBRAs
+        '#FFC72C', // Oro Solar: CETES / Liquidez / Ahorro
+        '#38BDF8', // Banxico Blue: Préstamos Otorgados
+        '#A855F7', // Modern Purple: Negocios / Storefronts (Bazarito, etc.)
+        '#FB923C', // Naranja Cobre: Rentas / Inmuebles
+        '#F43F5E', // Rosa Mexicano
+        '#2DD4BF', // Turquesa Caribe
+        '#94A3B8'  // Slate / Otros
+    ];
+
     portfolioChartInstance = new Chart(ctx, {
         type: 'doughnut',
         data: {
             labels,
             datasets: [{
                 data,
-                backgroundColor: [ '#006847', '#CE1126', '#C8973A', '#008c5b', '#7a288a', '#9A6E22', '#6B3A1F', '#2a9d8f' ],
-                borderWidth: 2, borderColor: '#0A100D', hoverOffset: 8
+                backgroundColor: assetColors.slice(0, labels.length),
+                borderWidth: 2,
+                borderColor: '#09110E',
+                hoverOffset: 8
             }]
         },
         options: {
-            responsive: true, maintainAspectRatio: false,
+            responsive: true,
+            maintainAspectRatio: false,
             plugins: {
-                legend: { position: 'right', labels: { color: '#C8973A', font: { family: 'Outfit', size: 12 }, padding: 16, boxWidth: 10 } },
-                tooltip: { backgroundColor: 'rgba(10, 16, 13, 0.95)', titleColor: '#C8973A', bodyColor: '#F2F2EF', borderColor: 'rgba(0, 104, 71, 0.4)', borderWidth: 1 }
-            }, cutout: '68%'
+                legend: {
+                    position: 'right',
+                    labels: {
+                        color: '#F8FAF9',
+                        font: { family: 'Outfit', size: 12, weight: '500' },
+                        padding: 14,
+                        boxWidth: 10,
+                        borderRadius: 3
+                    }
+                },
+                tooltip: {
+                    backgroundColor: 'rgba(9, 17, 14, 0.95)',
+                    titleColor: '#FFC72C',
+                    bodyColor: '#F8FAF9',
+                    borderColor: 'rgba(0, 168, 89, 0.4)',
+                    borderWidth: 1,
+                    titleFont: { family: 'Outfit', weight: 'bold' },
+                    bodyFont: { family: 'JetBrains Mono' },
+                    callbacks: {
+                        label: (ctx) => ` ${ctx.label}: ${formatCurrency(ctx.parsed)}`
+                    }
+                }
+            },
+            cutout: '68%'
         }
     });
 };
