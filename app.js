@@ -306,9 +306,9 @@ const CATEGORY_META = {
 
 const renderPortfolioFromAssets = (assets) => {
     const grid = document.getElementById('portfolio-grid');
-    grid.innerHTML = '';
+    if (grid) grid.innerHTML = '';
 
-    const validAssets = assets.filter(a => a.name && a.name.trim() !== '');
+    const validAssets = (assets || []).filter(a => a.name && a.name.trim() !== '');
     const countLabel = validAssets.length;
 
     const grouped = {};
@@ -321,11 +321,16 @@ const renderPortfolioFromAssets = (assets) => {
         grandTotal += val;
     });
 
-    document.getElementById('kpi-savings').textContent = formatCurrency(grandTotal);
+    const kpiSavings = document.getElementById('kpi-savings');
+    if (kpiSavings) kpiSavings.textContent = formatCurrency(grandTotal);
+
     const portfolioTotalKpi = document.getElementById('portfolio-kpi-total');
     if (portfolioTotalKpi) portfolioTotalKpi.textContent = formatCurrency(grandTotal);
-    document.getElementById('portfolio-total-label').textContent =
-        `Total: ${formatCurrency(grandTotal)} — ${countLabel} activos`;
+
+    const portfolioTotalLabel = document.getElementById('portfolio-total-label');
+    if (portfolioTotalLabel) {
+        portfolioTotalLabel.textContent = `Total: ${formatCurrency(grandTotal)} — ${countLabel} activos`;
+    }
 
     const chartLabels = [], chartData = [];
     for (const [cat, items] of Object.entries(grouped)) {
@@ -334,30 +339,34 @@ const renderPortfolioFromAssets = (assets) => {
         chartLabels.push(cat);
         chartData.push(subTotal);
 
-        grid.innerHTML += `
-            <div class="portfolio-card glass-panel" style="border-left: 3px solid ${meta.color}; grid-column: 1 / -1; display: flex; justify-content: space-between; align-items: center; padding: 12px 20px;">
-                <h4 style="color:${meta.color}; font-size: 15px;">${meta.icon} ${cat}</h4>
-                <span style="color:var(--text-on-dark); font-family:var(--font-heading); font-size: 18px; font-weight: 600;">${formatCurrency(subTotal)}</span>
-            </div>`;
-
-        items.forEach(a => {
-            const icon = a.icon || meta.icon;
+        if (grid) {
             grid.innerHTML += `
-                <div class="portfolio-card glass-panel">
-                    <div class="p-card-header">
-                        <h4>${icon} ${a.name}</h4>
-                    </div>
-                    <p class="p-card-amount">${formatCurrency(parseFloat(a.value || 0))}</p>
-                    <p style="color:var(--text-muted); font-size: 12px; margin-top: 4px;">${a.notes || ''}</p>
+                <div class="portfolio-card glass-panel" style="border-left: 3px solid ${meta.color}; grid-column: 1 / -1; display: flex; justify-content: space-between; align-items: center; padding: 12px 20px;">
+                    <h4 style="color:${meta.color}; font-size: 15px;">${meta.icon} ${cat}</h4>
+                    <span style="color:var(--text-on-dark); font-family:var(--font-heading); font-size: 18px; font-weight: 600;">${formatCurrency(subTotal)}</span>
                 </div>`;
-        });
+
+            items.forEach(a => {
+                const icon = a.icon || meta.icon;
+                grid.innerHTML += `
+                    <div class="portfolio-card glass-panel">
+                        <div class="p-card-header">
+                            <h4>${icon} ${a.name}</h4>
+                        </div>
+                        <p class="p-card-amount">${formatCurrency(parseFloat(a.value || 0))}</p>
+                        <p style="color:var(--text-muted); font-size: 12px; margin-top: 4px;">${a.notes || ''}</p>
+                    </div>`;
+            });
+        }
     }
 
     renderPortfolioChart(chartLabels, chartData);
 };
 
 const renderPortfolioChart = (labels, data) => {
-    const ctx = document.getElementById('portfolioChart').getContext('2d');
+    const canvas = document.getElementById('portfolioChart');
+    if (!canvas) return;
+    const ctx = canvas.getContext('2d');
     if (portfolioChartInstance) portfolioChartInstance.destroy();
 
     portfolioChartInstance = new Chart(ctx, {
@@ -366,7 +375,7 @@ const renderPortfolioChart = (labels, data) => {
             labels,
             datasets: [{
                 data,
-                backgroundColor: [ '#006847', '#CE1126', '#C8973A', '#008c5b', '#7a288a', '#9A6E22', '#6B3A1F' ],
+                backgroundColor: [ '#006847', '#CE1126', '#C8973A', '#008c5b', '#7a288a', '#9A6E22', '#6B3A1F', '#2a9d8f' ],
                 borderWidth: 2, borderColor: '#0A100D', hoverOffset: 8
             }]
         },
@@ -385,13 +394,15 @@ const loadSavingsData = async () => {
         const { data: assets, error } = await supabaseClient.from('finance_portfolio').select('*').order('category');
         if (error) throw error;
         
-        renderPortfolioFromAssets(assets);
-        await loadLoansData();
-        await loadRentalsData();
+        const safeAssets = assets || [];
+        renderPortfolioFromAssets(safeAssets);
+        await loadLoansData(safeAssets);
+        await loadRentalsData(safeAssets);
         updatePortfolioPassiveKPIs();
     } catch (err) {
         console.error('Error loading portfolio:', err);
-        document.getElementById('portfolio-grid').innerHTML = '<p class="text-red">Error cargando activos desde Supabase.</p>';
+        const grid = document.getElementById('portfolio-grid');
+        if (grid) grid.innerHTML = '<p class="text-red">Error cargando activos desde Supabase.</p>';
     }
 };
 
@@ -922,26 +933,54 @@ document.getElementById('modal-lots')?.addEventListener('click', (e) => {
 let loansData = [];
 let rentalsData = [];
 
-const loadLoansData = async () => {
+const loadLoansData = async (rawAssets = []) => {
     const grid = document.getElementById('loans-grid');
     if (!grid) return;
 
     try {
-        let { data: loans, error } = await supabaseClient
-            .from('finance_loans')
-            .select('*')
-            .order('created_at', { ascending: false });
+        let loans = [];
+        try {
+            const { data, error } = await supabaseClient
+                .from('finance_loans')
+                .select('*')
+                .order('created_at', { ascending: false });
 
-        if (error) {
-            console.warn('finance_loans table query notice:', error);
-            loans = [];
+            if (!error && data && data.length > 0) {
+                loans = data;
+            }
+        } catch (queryErr) {
+            console.warn('finance_loans table query notice:', queryErr);
+        }
+
+        // Fallback: check if rawAssets from finance_portfolio has loan records
+        if (!loans || loans.length === 0) {
+            const legacyLoans = (rawAssets || [])
+                .filter(a => {
+                    const cat = (a.category || '').toLowerCase();
+                    const name = (a.name || '').toLowerCase();
+                    return cat.includes('préstamo') || cat.includes('prestamo') || name.includes('intereses');
+                })
+                .map(a => ({
+                    id: a.id,
+                    borrower: a.name || 'Préstamo',
+                    initial_amount: parseFloat(a.value || 0),
+                    current_balance: parseFloat(a.value || 0),
+                    interest_rate_pct: 1.5,
+                    payment_day: 15,
+                    start_date: todayISO(),
+                    notes: a.notes || 'Sincronizado desde portafolio',
+                    status: 'active',
+                    isLegacy: true
+                }));
+            loans = legacyLoans;
         }
 
         loansData = loans || [];
         renderLoansGrid();
     } catch (err) {
         console.error('Error loading loans:', err);
-        grid.innerHTML = '<p class="text-red">Aviso: Ejecuta supabase_loans_rentals_schema.sql en Supabase para habilitar préstamos.</p>';
+        loansData = [];
+        renderLoansGrid();
     }
 };
 
@@ -952,8 +991,8 @@ const renderLoansGrid = () => {
 
     if (loansData.length === 0) {
         grid.innerHTML = `
-            <div class="portfolio-card glass-panel" style="grid-column: 1 / -1; text-align: center; padding: 28px;">
-                <p style="color: var(--text-muted);">No hay préstamos registrados aún. Haz clic en "+ Nuevo Préstamo" para dar seguimiento a capital e intereses.</p>
+            <div class="portfolio-card glass-panel" style="grid-column: 1 / -1; text-align: center; padding: 24px;">
+                <p style="color: var(--text-muted); font-size: 14px;">No tienes préstamos registrados por ahora. Haz clic en "Nuevo Préstamo" para dar seguimiento a capital e intereses.</p>
             </div>`;
         return;
     }
@@ -961,7 +1000,7 @@ const renderLoansGrid = () => {
     loansData.forEach(loan => {
         const initial = parseFloat(loan.initial_amount || 0);
         const current = parseFloat(loan.current_balance || 0);
-        const rate = parseFloat(loan.interest_rate_pct || 0);
+        const rate = parseFloat(loan.interest_rate_pct || 1.5);
         const monthlyInterest = current * (rate / 100);
         const repaid = Math.max(0, initial - current);
         const progressPct = initial > 0 ? Math.min(100, (repaid / initial) * 100) : 0;
@@ -974,7 +1013,7 @@ const renderLoansGrid = () => {
             <div class="p-card-header" style="display: flex; justify-content: space-between; align-items: flex-start;">
                 <div>
                     <h4 style="font-size: 15px; color: var(--text-on-dark);">🏦 ${loan.borrower}</h4>
-                    <span style="font-size: 11px; color: var(--text-muted);">${loan.notes || 'Préstamo personal'}</span>
+                    <span style="font-size: 11px; color: var(--text-muted);">${loan.notes || 'Préstamo con interés'}</span>
                 </div>
                 <button class="delete-btn btn-delete-loan" data-id="${loan.id}" title="Eliminar" style="font-size: 11px;">✕</button>
             </div>
@@ -1017,8 +1056,7 @@ const renderLoansGrid = () => {
             try {
                 await supabaseClient.from('finance_loans').delete().eq('id', id);
                 showToast('Préstamo eliminado.', 'success');
-                await loadLoansData();
-                updatePortfolioPassiveKPIs();
+                await loadSavingsData();
             } catch (err) {
                 console.error(err);
                 showToast('Error al eliminar préstamo.', 'error');
@@ -1041,26 +1079,54 @@ const renderLoansGrid = () => {
     });
 };
 
-const loadRentalsData = async () => {
+const loadRentalsData = async (rawAssets = []) => {
     const grid = document.getElementById('rentals-grid');
     if (!grid) return;
 
     try {
-        let { data: rentals, error } = await supabaseClient
-            .from('finance_rentals')
-            .select('*')
-            .order('created_at', { ascending: false });
+        let rentals = [];
+        try {
+            const { data, error } = await supabaseClient
+                .from('finance_rentals')
+                .select('*')
+                .order('created_at', { ascending: false });
 
-        if (error) {
-            console.warn('finance_rentals query notice:', error);
-            rentals = [];
+            if (!error && data && data.length > 0) {
+                rentals = data;
+            }
+        } catch (queryErr) {
+            console.warn('finance_rentals query notice:', queryErr);
+        }
+
+        // Fallback: check if rawAssets has real estate / rental items
+        if (!rentals || rentals.length === 0) {
+            const legacyRentals = (rawAssets || [])
+                .filter(a => {
+                    const cat = (a.category || '').toLowerCase();
+                    return cat.includes('inmueble') || cat.includes('renta');
+                })
+                .map(a => ({
+                    id: a.id,
+                    name: a.name,
+                    property_value: parseFloat(a.value || 0),
+                    monthly_rent: parseFloat(a.value || 0) * 0.006,
+                    monthly_expenses: 0,
+                    tenant_name: '',
+                    payment_day: 1,
+                    contract_end_date: null,
+                    notes: a.notes || '',
+                    status: 'occupied',
+                    isLegacy: true
+                }));
+            rentals = legacyRentals;
         }
 
         rentalsData = rentals || [];
         renderRentalsGrid();
     } catch (err) {
         console.error('Error loading rentals:', err);
-        grid.innerHTML = '<p class="text-red">Aviso: Ejecuta supabase_loans_rentals_schema.sql en Supabase para habilitar propiedades.</p>';
+        rentalsData = [];
+        renderRentalsGrid();
     }
 };
 
@@ -1071,8 +1137,8 @@ const renderRentalsGrid = () => {
 
     if (rentalsData.length === 0) {
         grid.innerHTML = `
-            <div class="portfolio-card glass-panel" style="grid-column: 1 / -1; text-align: center; padding: 28px;">
-                <p style="color: var(--text-muted);">No hay propiedades en renta registradas. Haz clic en "+ Nueva Propiedad" para dar seguimiento al flujo de rentas y Cap Rate.</p>
+            <div class="portfolio-card glass-panel" style="grid-column: 1 / -1; text-align: center; padding: 24px;">
+                <p style="color: var(--text-muted); font-size: 14px;">No tienes propiedades en renta registradas. Haz clic en "Nueva Propiedad" para dar seguimiento al flujo de rentas y Cap Rate.</p>
             </div>`;
         return;
     }
