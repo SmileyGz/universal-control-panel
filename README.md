@@ -1,36 +1,40 @@
-# SMILEY — Personal AI Assistant
+# Smiley Universal Control Panel (UCP)
 
-## Purpose
-A personal AI operating system for José — keeping life organized, finances tracked, and brain clear.
+Admin dashboard and personal financial operating system for José. Centralizes finances, cashflow, and business portfolio metrics across multiple storefronts and investments.
 
-## Structure
-
-### 🧠 Core
-- `personal_brain.md` → Defines who I am, my context, goals, and preferences
-
-### 👷 Workers
-- `weekly_planner_agent.md` → Plans the week every Monday
-- `finance_tracker_agent.md` → Tracks income and expenses across projects
-- `morning_briefing_agent.md` → Daily check-in and focus setter
-- `brain_dump_agent.md` → Clears mental overload into organized actions
+- **Production URL:** [https://smileygz.github.io/universal-control-panel/](https://smileygz.github.io/universal-control-panel/)
+- **Backend:** Supabase (`finance_transactions` & `finance_portfolio`)
+- **Frontend:** Vanilla JS, CSS (Glassmorphism), Chart.js
 
 ---
 
-## Daily Use
+## Architecture & Features
 
-### Every morning:
-1. Open `morning_briefing_agent.md` → Set your #1 priority for the day
+### 1. 📊 Financial Dashboard
+- Visualizes cashflow trends, income, expenses, and net balance by year and month.
+- Key financial performance indicators (KPIs).
 
-### Every Monday:
-2. Open `weekly_planner_agent.md` → Plan the full week
+### 2. 💳 Transactions View
+- Historical record and real-time capture of financial operations.
+- Direct synchronization with the Supabase `finance_transactions` table.
 
-### Anytime:
-3. `finance_tracker_agent.md` → Log money in/out
-4. `brain_dump_agent.md` → Dump what's in your head
+### 3. 💼 Portfolio & Hub-and-Spoke Storefronts
+- Central asset tracking: Savings, Investments, Liquidity, Loans, and Business ventures.
+- Manages metrics for connected remote storefronts:
+  - **Secretitos**
+  - **Bazarito Cancún** ([Live Storefront](https://smileygz.github.io/Bazarito-cancun))
+  - **Litros Express**
+  - **Travel Services**
+  - **Jonla Agency**
 
 ---
 
-## Rule
-If it's overwhelming you → dump it.
-If it's repetitive → build a system for it.
-If it's not moving → put it on the weekly plan.
+## Deployment Workflow
+
+Changes pushed to `main` automatically deploy to GitHub Pages:
+
+```bash
+git add .
+git commit -m "feat/fix: description of changes"
+git push origin main
+```
