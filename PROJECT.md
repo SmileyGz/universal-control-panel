@@ -27,6 +27,17 @@ The application relies on Supabase as the primary database backend, containing t
    - **Views:** Feeds the Investments & Stocks view, calculating Weighted Average Cost Basis, Unrealized P&L ($ and %), and historical purchase lot logs.
    - **Migration Script:** [supabase_investments_schema.sql](file:///Users/josegonzalez/Documents/Smileys%20Org/02_Businesses/UCP/supabase_investments_schema.sql).
 
+4. **`finance_loans`**
+   - **Purpose:** Manages peer-to-peer, personal, and business loans issued, calculating monthly interest income and capital amortization.
+   - **Columns:** `id`, `borrower`, `initial_amount`, `current_balance`, `interest_rate_pct`, `rate_frequency`, `payment_day`, `start_date`, `notes`, `status` ('active', 'paid_off', 'defaulted').
+   - **Views:** Feeds the Loans section in Portfolio, showing visual repayment progress, monthly interest returns, and quick actions for capital repayment vs. interest receipts.
+
+5. **`finance_rentals`**
+   - **Purpose:** Manages real estate and property rental assets, net cashflow, and automatic Cap Rate calculation.
+   - **Columns:** `id`, `name`, `property_value`, `monthly_rent`, `monthly_expenses`, `tenant_name`, `payment_day`, `contract_end_date`, `notes`, `status` ('occupied', 'vacant', 'maintenance').
+   - **Views:** Feeds the Rental Properties section in Portfolio, calculating Net Rental Income, annual Cap Rate (%), and quick rent collection logging.
+   - **Migration Script:** [supabase_loans_rentals_schema.sql](file:///Users/josegonzalez/Documents/Smileys%20Org/02_Businesses/UCP/supabase_loans_rentals_schema.sql).
+
 ## Deployment Workflow (GitHub Pages)
 - **Hosting:** The web app is a static site hosted via GitHub Pages.
 - **Production URL:** `https://smileygz.github.io/universal-control-panel/`

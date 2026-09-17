@@ -300,6 +300,7 @@ const CATEGORY_META = {
     'Liquidez':   { icon: '💵', color: '#006847' },
     'Ahorro':     { icon: '🏧', color: '#9A6E22' },
     'Negocios':   { icon: '🛒', color: '#7a288a' }, // Added for Bazarito and Business Assets
+    'Inmuebles':  { icon: '🏠', color: '#2a9d8f' },
     'Otros':      { icon: '💰', color: '#6B3A1F' },
 };
 
@@ -321,6 +322,8 @@ const renderPortfolioFromAssets = (assets) => {
     });
 
     document.getElementById('kpi-savings').textContent = formatCurrency(grandTotal);
+    const portfolioTotalKpi = document.getElementById('portfolio-kpi-total');
+    if (portfolioTotalKpi) portfolioTotalKpi.textContent = formatCurrency(grandTotal);
     document.getElementById('portfolio-total-label').textContent =
         `Total: ${formatCurrency(grandTotal)} — ${countLabel} activos`;
 
@@ -383,6 +386,9 @@ const loadSavingsData = async () => {
         if (error) throw error;
         
         renderPortfolioFromAssets(assets);
+        await loadLoansData();
+        await loadRentalsData();
+        updatePortfolioPassiveKPIs();
     } catch (err) {
         console.error('Error loading portfolio:', err);
         document.getElementById('portfolio-grid').innerHTML = '<p class="text-red">Error cargando activos desde Supabase.</p>';
@@ -908,6 +914,538 @@ document.getElementById('lots-modal-close')?.addEventListener('click', closeLots
 document.getElementById('btn-close-lots')?.addEventListener('click', closeLotsModal);
 document.getElementById('modal-lots')?.addEventListener('click', (e) => {
     if (e.target === document.getElementById('modal-lots')) closeLotsModal();
+});
+
+// ============================================================
+// LOANS & RENTALS MODULE
+// ============================================================
+let loansData = [];
+let rentalsData = [];
+
+const loadLoansData = async () => {
+    const grid = document.getElementById('loans-grid');
+    if (!grid) return;
+
+    try {
+        let { data: loans, error } = await supabaseClient
+            .from('finance_loans')
+            .select('*')
+            .order('created_at', { ascending: false });
+
+        if (error) {
+            console.warn('finance_loans table query notice:', error);
+            loans = [];
+        }
+
+        loansData = loans || [];
+        renderLoansGrid();
+    } catch (err) {
+        console.error('Error loading loans:', err);
+        grid.innerHTML = '<p class="text-red">Aviso: Ejecuta supabase_loans_rentals_schema.sql en Supabase para habilitar préstamos.</p>';
+    }
+};
+
+const renderLoansGrid = () => {
+    const grid = document.getElementById('loans-grid');
+    if (!grid) return;
+    grid.innerHTML = '';
+
+    if (loansData.length === 0) {
+        grid.innerHTML = `
+            <div class="portfolio-card glass-panel" style="grid-column: 1 / -1; text-align: center; padding: 28px;">
+                <p style="color: var(--text-muted);">No hay préstamos registrados aún. Haz clic en "+ Nuevo Préstamo" para dar seguimiento a capital e intereses.</p>
+            </div>`;
+        return;
+    }
+
+    loansData.forEach(loan => {
+        const initial = parseFloat(loan.initial_amount || 0);
+        const current = parseFloat(loan.current_balance || 0);
+        const rate = parseFloat(loan.interest_rate_pct || 0);
+        const monthlyInterest = current * (rate / 100);
+        const repaid = Math.max(0, initial - current);
+        const progressPct = initial > 0 ? Math.min(100, (repaid / initial) * 100) : 0;
+        const isPaidOff = current <= 0 || loan.status === 'paid_off';
+
+        const card = document.createElement('div');
+        card.className = 'portfolio-card glass-panel';
+        card.style.borderLeft = `3px solid ${isPaidOff ? 'var(--mx-green-light)' : 'var(--eagle-gold)'}`;
+        card.innerHTML = `
+            <div class="p-card-header" style="display: flex; justify-content: space-between; align-items: flex-start;">
+                <div>
+                    <h4 style="font-size: 15px; color: var(--text-on-dark);">🏦 ${loan.borrower}</h4>
+                    <span style="font-size: 11px; color: var(--text-muted);">${loan.notes || 'Préstamo personal'}</span>
+                </div>
+                <button class="delete-btn btn-delete-loan" data-id="${loan.id}" title="Eliminar" style="font-size: 11px;">✕</button>
+            </div>
+
+            <div class="loan-card-balance">
+                ${formatCurrency(current)}
+                <span style="font-size: 12px; color: var(--text-muted); font-weight: normal;"> / ${formatCurrency(initial)}</span>
+            </div>
+
+            <div class="loan-progress-container">
+                <div class="loan-progress-fill" style="width: ${progressPct}%"></div>
+            </div>
+
+            <div class="loan-metrics-row">
+                <span>Pagado: ${progressPct.toFixed(1)}% (${formatCurrency(repaid)})</span>
+                <span>Tasa: <strong>${rate}% / mes</strong></span>
+            </div>
+            <div class="loan-metrics-row" style="color: var(--mx-green-light); font-weight: 500;">
+                <span>Interés mensual: <strong>+${formatCurrency(monthlyInterest)}</strong></span>
+                <span>Corte: Día ${loan.payment_day || 1}</span>
+            </div>
+
+            <div class="loan-actions-bar">
+                <button class="btn-loan-action btn-loan-principal" data-id="${loan.id}" data-borrower="${loan.borrower}" data-balance="${current}" title="Registrar abono de capital">
+                    💰 Abono Capital
+                </button>
+                <button class="btn-loan-action interest btn-loan-interest" data-id="${loan.id}" data-borrower="${loan.borrower}" data-interest="${monthlyInterest}" title="Registrar cobro de interés">
+                    📈 Cobro Interés
+                </button>
+            </div>
+        `;
+        grid.appendChild(card);
+    });
+
+    // Event listeners for loan cards
+    grid.querySelectorAll('.btn-delete-loan').forEach(btn => {
+        btn.addEventListener('click', async (e) => {
+            const id = e.currentTarget.dataset.id;
+            if (!confirm('¿Eliminar este préstamo?')) return;
+            try {
+                await supabaseClient.from('finance_loans').delete().eq('id', id);
+                showToast('Préstamo eliminado.', 'success');
+                await loadLoansData();
+                updatePortfolioPassiveKPIs();
+            } catch (err) {
+                console.error(err);
+                showToast('Error al eliminar préstamo.', 'error');
+            }
+        });
+    });
+
+    grid.querySelectorAll('.btn-loan-principal').forEach(btn => {
+        btn.addEventListener('click', (e) => {
+            const b = e.currentTarget;
+            openLoanActionModal(b.dataset.id, b.dataset.borrower, parseFloat(b.dataset.balance), 'principal');
+        });
+    });
+
+    grid.querySelectorAll('.btn-loan-interest').forEach(btn => {
+        btn.addEventListener('click', (e) => {
+            const b = e.currentTarget;
+            openLoanActionModal(b.dataset.id, b.dataset.borrower, parseFloat(b.dataset.interest), 'interest');
+        });
+    });
+};
+
+const loadRentalsData = async () => {
+    const grid = document.getElementById('rentals-grid');
+    if (!grid) return;
+
+    try {
+        let { data: rentals, error } = await supabaseClient
+            .from('finance_rentals')
+            .select('*')
+            .order('created_at', { ascending: false });
+
+        if (error) {
+            console.warn('finance_rentals query notice:', error);
+            rentals = [];
+        }
+
+        rentalsData = rentals || [];
+        renderRentalsGrid();
+    } catch (err) {
+        console.error('Error loading rentals:', err);
+        grid.innerHTML = '<p class="text-red">Aviso: Ejecuta supabase_loans_rentals_schema.sql en Supabase para habilitar propiedades.</p>';
+    }
+};
+
+const renderRentalsGrid = () => {
+    const grid = document.getElementById('rentals-grid');
+    if (!grid) return;
+    grid.innerHTML = '';
+
+    if (rentalsData.length === 0) {
+        grid.innerHTML = `
+            <div class="portfolio-card glass-panel" style="grid-column: 1 / -1; text-align: center; padding: 28px;">
+                <p style="color: var(--text-muted);">No hay propiedades en renta registradas. Haz clic en "+ Nueva Propiedad" para dar seguimiento al flujo de rentas y Cap Rate.</p>
+            </div>`;
+        return;
+    }
+
+    rentalsData.forEach(rental => {
+        const val = parseFloat(rental.property_value || 0);
+        const rent = parseFloat(rental.monthly_rent || 0);
+        const exp = parseFloat(rental.monthly_expenses || 0);
+        const net = Math.max(0, rent - exp);
+        const annualNet = net * 12;
+        const capRate = val > 0 ? ((annualNet / val) * 100) : 0;
+
+        const card = document.createElement('div');
+        card.className = 'portfolio-card glass-panel';
+        card.style.borderLeft = '3px solid #2a9d8f';
+        card.innerHTML = `
+            <div class="p-card-header" style="display: flex; justify-content: space-between; align-items: flex-start;">
+                <div>
+                    <h4 style="font-size: 15px; color: var(--text-on-dark);">🏠 ${rental.name}</h4>
+                    <span style="font-size: 12px; color: var(--text-muted);">${rental.tenant_name ? `Inquilino: ${rental.tenant_name}` : 'Sin inquilino'}</span>
+                </div>
+                <div style="display: flex; gap: 6px; align-items: center;">
+                    <span class="cap-rate-badge" title="Tasa de Capitalización anual">Cap Rate: ${capRate.toFixed(1)}%</span>
+                    <button class="delete-btn btn-delete-rental" data-id="${rental.id}" title="Eliminar">✕</button>
+                </div>
+            </div>
+
+            <div class="rental-net-callout">
+                <div>
+                    <span style="font-size: 11px; color: var(--text-secondary); display: block;">Renta Neta Mensual</span>
+                    <strong style="font-size: 18px; color: var(--mx-green-light);">${formatCurrency(net)}</strong>
+                </div>
+                <div style="text-align: right; font-size: 12px; color: var(--text-muted);">
+                    <span>Bruta: ${formatCurrency(rent)}</span><br>
+                    <span>Gastos: -${formatCurrency(exp)}</span>
+                </div>
+            </div>
+
+            <div class="loan-metrics-row">
+                <span>Valor estimado: <strong>${formatCurrency(val)}</strong></span>
+                <span>Cobro: Día ${rental.payment_day || 1}</span>
+            </div>
+
+            <div class="loan-actions-bar">
+                <button class="btn-loan-action interest btn-record-rent" data-name="${rental.name}" data-rent="${rent}" title="Registrar ingreso de renta este mes">
+                    💵 Registrar Renta Cobrada
+                </button>
+            </div>
+        `;
+        grid.appendChild(card);
+    });
+
+    // Event listeners for rental cards
+    grid.querySelectorAll('.btn-delete-rental').forEach(btn => {
+        btn.addEventListener('click', async (e) => {
+            const id = e.currentTarget.dataset.id;
+            if (!confirm('¿Eliminar esta propiedad?')) return;
+            try {
+                await supabaseClient.from('finance_rentals').delete().eq('id', id);
+                showToast('Propiedad eliminada.', 'success');
+                await loadRentalsData();
+                updatePortfolioPassiveKPIs();
+            } catch (err) {
+                console.error(err);
+                showToast('Error al eliminar propiedad.', 'error');
+            }
+        });
+    });
+
+    grid.querySelectorAll('.btn-record-rent').forEach(btn => {
+        btn.addEventListener('click', async (e) => {
+            const name = e.currentTarget.dataset.name;
+            const rent = parseFloat(e.currentTarget.dataset.rent);
+            const today = todayISO();
+
+            if (!confirm(`¿Registrar cobro de renta de ${formatCurrency(rent)} para "${name}"?`)) return;
+
+            try {
+                const tx = {
+                    date: today,
+                    description: `Renta: ${name}`,
+                    amount: rent,
+                    type: 'income',
+                    category: 'Renta',
+                    notes: `Cobro automático de renta mensual`
+                };
+                await supabaseClient.from('finance_transactions').insert([tx]);
+                showToast(`✅ Renta de ${formatCurrency(rent)} registrada como Ingreso!`, 'success');
+                await loadYearlyData(currentYear);
+            } catch (err) {
+                console.error(err);
+                showToast('Error al registrar ingreso de renta.', 'error');
+            }
+        });
+    });
+};
+
+const updatePortfolioPassiveKPIs = () => {
+    let totalLoanBalance = 0;
+    let monthlyInterest = 0;
+    let activeLoansCount = 0;
+
+    loansData.forEach(l => {
+        const bal = parseFloat(l.current_balance || 0);
+        const rate = parseFloat(l.interest_rate_pct || 0);
+        if (bal > 0 && l.status !== 'paid_off') {
+            totalLoanBalance += bal;
+            monthlyInterest += (bal * (rate / 100));
+            activeLoansCount++;
+        }
+    });
+
+    let totalRentalValue = 0;
+    let monthlyNetRent = 0;
+    let totalAnnualNet = 0;
+
+    rentalsData.forEach(r => {
+        const val = parseFloat(r.property_value || 0);
+        const rent = parseFloat(r.monthly_rent || 0);
+        const exp = parseFloat(r.monthly_expenses || 0);
+        const net = Math.max(0, rent - exp);
+        totalRentalValue += val;
+        monthlyNetRent += net;
+        totalAnnualNet += (net * 12);
+    });
+
+    const totalPassiveMonthly = monthlyInterest + monthlyNetRent;
+    const avgCapRate = totalRentalValue > 0 ? ((totalAnnualNet / totalRentalValue) * 100) : 0;
+
+    const passiveEl = document.getElementById('portfolio-kpi-passive');
+    const loansEl = document.getElementById('portfolio-kpi-loans');
+    const loansCountEl = document.getElementById('portfolio-kpi-loans-count');
+    const rentalsEl = document.getElementById('portfolio-kpi-rentals');
+    const capRateEl = document.getElementById('portfolio-kpi-caprate');
+
+    if (passiveEl) passiveEl.textContent = `${formatCurrency(totalPassiveMonthly)} / mes`;
+    if (loansEl) loansEl.textContent = formatCurrency(totalLoanBalance);
+    if (loansCountEl) loansCountEl.textContent = `${activeLoansCount} préstamos activos`;
+    if (rentalsEl) rentalsEl.textContent = formatCurrency(totalRentalValue);
+    if (capRateEl) capRateEl.textContent = `Cap Rate Prom: ${avgCapRate.toFixed(1)}%`;
+};
+
+// ============================================================
+// MODALS: LOANS & RENTALS
+// ============================================================
+// Loan Modal
+const openAddLoanModal = () => {
+    document.getElementById('loan-form').reset();
+    document.getElementById('loan-date').value = todayISO();
+    document.getElementById('loan-rate').value = '1.5';
+    document.getElementById('loan-day').value = '15';
+    document.getElementById('modal-loan').classList.remove('hidden');
+};
+
+const closeAddLoanModal = () => {
+    document.getElementById('modal-loan').classList.add('hidden');
+};
+
+document.getElementById('btn-open-add-loan')?.addEventListener('click', openAddLoanModal);
+document.getElementById('loan-modal-close')?.addEventListener('click', closeAddLoanModal);
+document.getElementById('btn-cancel-loan')?.addEventListener('click', closeAddLoanModal);
+document.getElementById('modal-loan')?.addEventListener('click', (e) => {
+    if (e.target === document.getElementById('modal-loan')) closeAddLoanModal();
+});
+
+document.getElementById('loan-form')?.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const borrower = document.getElementById('loan-borrower').value.trim();
+    const initial = parseFloat(document.getElementById('loan-initial').value);
+    const balanceInput = document.getElementById('loan-balance').value;
+    const balance = balanceInput ? parseFloat(balanceInput) : initial;
+    const rate = parseFloat(document.getElementById('loan-rate').value);
+    const day = parseInt(document.getElementById('loan-day').value, 10);
+    const date = document.getElementById('loan-date').value;
+    const status = document.getElementById('loan-status').value;
+    const notes = document.getElementById('loan-notes').value.trim();
+
+    if (!borrower || isNaN(initial) || isNaN(balance) || isNaN(rate)) {
+        showToast('Completa los campos requeridos.', 'error');
+        return;
+    }
+
+    try {
+        const loanRow = {
+            borrower,
+            initial_amount: initial,
+            current_balance: balance,
+            interest_rate_pct: rate,
+            payment_day: day || 1,
+            start_date: date,
+            status,
+            notes
+        };
+
+        const { error } = await supabaseClient.from('finance_loans').insert([loanRow]);
+        if (error) throw error;
+
+        // Sync to finance_portfolio
+        await supabaseClient.from('finance_portfolio').insert([{
+            name: borrower,
+            category: 'Préstamos',
+            value: balance,
+            notes: `Tasa: ${rate}%/mes - Corte día ${day}`,
+            icon: '🏦'
+        }]);
+
+        closeAddLoanModal();
+        showToast(`✅ Préstamo a "${borrower}" registrado!`, 'success');
+        await loadLoansData();
+        await loadSavingsData();
+    } catch (err) {
+        console.error('Error saving loan:', err);
+        showToast('Error al guardar préstamo en Supabase.', 'error');
+    }
+});
+
+// Loan Action Modal
+const openLoanActionModal = (id, borrower, defaultAmount, actionType = 'interest') => {
+    const loan = loansData.find(l => l.id == id);
+    document.getElementById('loan-action-id').value = id;
+    document.getElementById('loan-action-borrower-label').textContent = borrower;
+    document.getElementById('loan-action-balance-label').textContent = `Saldo insoluto actual: ${formatCurrency(loan?.current_balance || 0)}`;
+    document.getElementById('loan-action-type').value = actionType;
+    document.getElementById('loan-action-amount').value = (defaultAmount || 0).toFixed(2);
+    document.getElementById('loan-action-date').value = todayISO();
+    document.getElementById('loan-action-notes').value = '';
+    document.getElementById('modal-loan-action').classList.remove('hidden');
+};
+
+const closeLoanActionModal = () => {
+    document.getElementById('modal-loan-action').classList.add('hidden');
+};
+
+document.getElementById('loan-action-close')?.addEventListener('click', closeLoanActionModal);
+document.getElementById('btn-cancel-loan-action')?.addEventListener('click', closeLoanActionModal);
+document.getElementById('modal-loan-action')?.addEventListener('click', (e) => {
+    if (e.target === document.getElementById('modal-loan-action')) closeLoanActionModal();
+});
+
+document.getElementById('loan-action-form')?.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const id = document.getElementById('loan-action-id').value;
+    const type = document.getElementById('loan-action-type').value;
+    const amount = parseFloat(document.getElementById('loan-action-amount').value);
+    const date = document.getElementById('loan-action-date').value;
+    const notes = document.getElementById('loan-action-notes').value.trim();
+
+    const loan = loansData.find(l => l.id == id);
+    if (!loan || isNaN(amount) || amount <= 0) {
+        showToast('Ingresa un monto válido.', 'error');
+        return;
+    }
+
+    try {
+        if (type === 'principal') {
+            const newBal = Math.max(0, parseFloat(loan.current_balance || 0) - amount);
+            const newStatus = newBal <= 0 ? 'paid_off' : 'active';
+
+            await supabaseClient
+                .from('finance_loans')
+                .update({ current_balance: newBal, status: newStatus })
+                .eq('id', id);
+
+            // Record transaction in finance_transactions
+            await supabaseClient.from('finance_transactions').insert([{
+                date,
+                description: `${loan.borrower} — Abono Capital`,
+                amount,
+                type: 'income',
+                category: 'Tía — Abono Capital',
+                notes: notes || `Abono al préstamo. Nuevo saldo: ${formatCurrency(newBal)}`
+            }]);
+
+            // Sync with finance_portfolio row
+            await supabaseClient
+                .from('finance_portfolio')
+                .update({ value: newBal })
+                .eq('name', loan.borrower);
+
+            showToast(`✅ Abono de ${formatCurrency(amount)} aplicado. Saldo: ${formatCurrency(newBal)}`, 'success');
+        } else {
+            // Interest payment
+            await supabaseClient.from('finance_transactions').insert([{
+                date,
+                description: `${loan.borrower} — Interés Recibido`,
+                amount,
+                type: 'income',
+                category: 'Tía — Interés Recibido',
+                notes: notes || `Cobro de interés pactado`
+            }]);
+
+            showToast(`✅ Interés de ${formatCurrency(amount)} registrado como Ingreso!`, 'success');
+        }
+
+        closeLoanActionModal();
+        await loadLoansData();
+        await loadSavingsData();
+        await loadYearlyData(currentYear);
+    } catch (err) {
+        console.error('Error recording loan action:', err);
+        showToast('Error al registrar movimiento del préstamo.', 'error');
+    }
+});
+
+// Rental Modal
+const openAddRentalModal = () => {
+    document.getElementById('rental-form').reset();
+    document.getElementById('rental-expenses').value = '0.00';
+    document.getElementById('rental-day').value = '1';
+    document.getElementById('modal-rental').classList.remove('hidden');
+};
+
+const closeAddRentalModal = () => {
+    document.getElementById('modal-rental').classList.add('hidden');
+};
+
+document.getElementById('btn-open-add-rental')?.addEventListener('click', openAddRentalModal);
+document.getElementById('rental-modal-close')?.addEventListener('click', closeAddRentalModal);
+document.getElementById('btn-cancel-rental')?.addEventListener('click', closeAddRentalModal);
+document.getElementById('modal-rental')?.addEventListener('click', (e) => {
+    if (e.target === document.getElementById('modal-rental')) closeAddRentalModal();
+});
+
+document.getElementById('rental-form')?.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const name = document.getElementById('rental-name').value.trim();
+    const val = parseFloat(document.getElementById('rental-value').value);
+    const rent = parseFloat(document.getElementById('rental-rent').value);
+    const exp = parseFloat(document.getElementById('rental-expenses').value || 0);
+    const day = parseInt(document.getElementById('rental-day').value, 10);
+    const tenant = document.getElementById('rental-tenant').value.trim();
+    const endDate = document.getElementById('rental-end-date').value;
+    const status = document.getElementById('rental-status').value;
+    const notes = document.getElementById('rental-notes').value.trim();
+
+    if (!name || isNaN(val) || isNaN(rent)) {
+        showToast('Completa los campos requeridos.', 'error');
+        return;
+    }
+
+    try {
+        const rentalRow = {
+            name,
+            property_value: val,
+            monthly_rent: rent,
+            monthly_expenses: exp,
+            tenant_name: tenant,
+            payment_day: day || 1,
+            contract_end_date: endDate || null,
+            status,
+            notes
+        };
+
+        const { error } = await supabaseClient.from('finance_rentals').insert([rentalRow]);
+        if (error) throw error;
+
+        // Sync to finance_portfolio
+        await supabaseClient.from('finance_portfolio').insert([{
+            name,
+            category: 'Inmuebles',
+            value: val,
+            notes: `Renta neta: ${formatCurrency(rent - exp)}/mes - Inquilino: ${tenant || 'N/A'}`,
+            icon: '🏠'
+        }]);
+
+        closeAddRentalModal();
+        showToast(`✅ Propiedad "${name}" registrada!`, 'success');
+        await loadRentalsData();
+        await loadSavingsData();
+    } catch (err) {
+        console.error('Error saving rental:', err);
+        showToast('Error al guardar propiedad en Supabase.', 'error');
+    }
 });
 
 // ============================================================

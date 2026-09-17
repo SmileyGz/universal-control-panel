@@ -795,4 +795,104 @@ select.glass-input option {
     color: var(--eagle-gold) !important;
 }
 
+/* ============================================
+   LOANS & RENTALS STYLES
+   ============================================ */
+.loan-card-balance {
+    font-size: 22px;
+    font-weight: 700;
+    color: var(--text-on-dark);
+    font-family: var(--font-heading);
+    margin: 8px 0 4px 0;
+}
+
+.loan-progress-container {
+    background: rgba(255, 255, 255, 0.08);
+    border-radius: 999px;
+    height: 7px;
+    width: 100%;
+    margin: 10px 0 12px 0;
+    overflow: hidden;
+}
+
+.loan-progress-fill {
+    background: linear-gradient(90deg, var(--eagle-gold), var(--mx-green-light));
+    height: 100%;
+    border-radius: 999px;
+    transition: width 0.4s ease;
+}
+
+.loan-metrics-row {
+    display: flex;
+    justify-content: space-between;
+    font-size: 12px;
+    color: var(--text-secondary);
+    margin-bottom: 6px;
+}
+
+.loan-actions-bar {
+    display: flex;
+    gap: 8px;
+    margin-top: 14px;
+    padding-top: 10px;
+    border-top: 1px solid rgba(0, 104, 71, 0.15);
+}
+
+.btn-loan-action {
+    flex: 1;
+    background: rgba(200, 151, 58, 0.1);
+    border: 1px solid rgba(200, 151, 58, 0.25);
+    color: var(--eagle-gold);
+    padding: 6px 10px;
+    border-radius: 6px;
+    font-size: 11px;
+    font-weight: 600;
+    cursor: pointer;
+    text-align: center;
+    transition: var(--transition);
+}
+
+.btn-loan-action:hover {
+    background: rgba(200, 151, 58, 0.25);
+    border-color: var(--eagle-gold);
+    color: var(--mx-white);
+}
+
+.btn-loan-action.interest {
+    background: rgba(0, 140, 91, 0.12);
+    border-color: rgba(0, 140, 91, 0.3);
+    color: var(--mx-green-light);
+}
+
+.btn-loan-action.interest:hover {
+    background: rgba(0, 140, 91, 0.25);
+    border-color: var(--mx-green-light);
+    color: var(--mx-white);
+}
+
+.cap-rate-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    background: rgba(0, 140, 91, 0.15);
+    color: var(--mx-green-light);
+    border: 1px solid rgba(0, 140, 91, 0.3);
+    padding: 3px 8px;
+    border-radius: 6px;
+    font-size: 12px;
+    font-weight: 600;
+}
+
+.rental-net-callout {
+    background: rgba(0, 104, 71, 0.12);
+    border: 1px solid rgba(0, 104, 71, 0.25);
+    border-radius: 8px;
+    padding: 8px 12px;
+    margin: 10px 0;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+
 

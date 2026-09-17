@@ -134,20 +134,86 @@
                 </div>
             </section>
 
-            <!-- Portfolio View -->
+            <!-- Portfolio View (Business Assets, Loans & Rentals) -->
             <section id="view-portfolio" class="view-section">
-                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; flex-wrap: wrap; gap: 12px;">
-                    <div>
-                        <h3 style="font-family: var(--font-heading); font-size: 20px; color: var(--text-on-dark);">Business Assets & Portfolio</h3>
-                        <p id="portfolio-total-label" style="color: var(--text-secondary); font-size: 14px; margin-top: 4px;">Cargando activos...</p>
+                <!-- Portfolio Summary KPIs -->
+                <div class="kpi-grid">
+                    <div class="kpi-card glass-panel gradient-border">
+                        <h3>Patrimonio Total en Activos</h3>
+                        <p class="amount" id="portfolio-kpi-total">$0.00</p>
+                        <span class="trend" id="portfolio-total-label">Cargando activos...</span>
                     </div>
-                    <button id="btn-setup-portfolio" class="btn btn-primary hidden" style="padding: 10px 20px; font-size: 13px;">
-                        📊 Setup Portfolio
+                    <div class="kpi-card glass-panel highlight-bg">
+                        <h3>Flujo Pasivo Mensual</h3>
+                        <p class="amount text-green" id="portfolio-kpi-passive">$0.00 / mes</p>
+                        <span class="trend">Intereses + Rentas Netas</span>
+                    </div>
+                    <div class="kpi-card glass-panel">
+                        <h3>Préstamos por Cobrar</h3>
+                        <p class="amount text-gold" id="portfolio-kpi-loans">$0.00</p>
+                        <span class="trend" id="portfolio-kpi-loans-count">0 préstamos activos</span>
+                    </div>
+                    <div class="kpi-card glass-panel">
+                        <h3>Inmuebles en Renta</h3>
+                        <p class="amount" id="portfolio-kpi-rentals">$0.00</p>
+                        <span class="trend" id="portfolio-kpi-caprate">Cap Rate Prom: 0.0%</span>
+                    </div>
+                </div>
+
+                <!-- SECTION 1: Personal / Business Loans with Interest -->
+                <div style="margin-top: 32px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px;">
+                    <div>
+                        <h3 style="font-family: var(--font-heading); font-size: 19px; color: var(--text-on-dark); display: flex; align-items: center; gap: 8px;">
+                            <span>🏦</span> Préstamos Otorgados & Retorno de Interés
+                        </h3>
+                        <p style="color: var(--text-secondary); font-size: 13px; margin-top: 2px;">
+                            Seguimiento de capital prestado, saldo insoluto e ingresos por intereses pactados.
+                        </p>
+                    </div>
+                    <button id="btn-open-add-loan" class="btn btn-primary" style="padding: 8px 16px; font-size: 13px; display: flex; align-items: center; gap: 6px;">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+                        + Nuevo Préstamo
                     </button>
+                </div>
+                <div class="portfolio-grid" id="loans-grid" style="margin-top: 14px;">
+                    <div class="portfolio-card glass-panel">
+                        <div class="p-card-header"><h4>Cargando préstamos...</h4></div>
+                    </div>
+                </div>
+
+                <!-- SECTION 2: Real Estate & Rental Properties -->
+                <div style="margin-top: 36px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px;">
+                    <div>
+                        <h3 style="font-family: var(--font-heading); font-size: 19px; color: var(--text-on-dark); display: flex; align-items: center; gap: 8px;">
+                            <span>🏠</span> Propiedades en Renta & Cap Rate
+                        </h3>
+                        <p style="color: var(--text-secondary); font-size: 13px; margin-top: 2px;">
+                            Inmuebles en arrendamiento, rentas brutas, gastos fijos y tasa de capitalización (Cap Rate).
+                        </p>
+                    </div>
+                    <button id="btn-open-add-rental" class="btn btn-primary" style="padding: 8px 16px; font-size: 13px; display: flex; align-items: center; gap: 6px;">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+                        + Nueva Propiedad
+                    </button>
+                </div>
+                <div class="portfolio-grid" id="rentals-grid" style="margin-top: 14px;">
+                    <div class="portfolio-card glass-panel">
+                        <div class="p-card-header"><h4>Cargando propiedades...</h4></div>
+                    </div>
+                </div>
+
+                <!-- SECTION 3: Business Assets, Storefronts & Liquidity -->
+                <div style="margin-top: 36px; margin-bottom: 14px;">
+                    <h3 style="font-family: var(--font-heading); font-size: 19px; color: var(--text-on-dark); display: flex; align-items: center; gap: 8px;">
+                        <span>🛒</span> Negocios, Cuentas y Activos del Hub
+                    </h3>
+                    <p style="color: var(--text-secondary); font-size: 13px; margin-top: 2px;">
+                        Activos comerciales de storefronts (Bazarito, Secretitos, etc.), ahorro y liquidez.
+                    </p>
                 </div>
                 <div class="portfolio-grid" id="portfolio-grid">
                     <div class="portfolio-card glass-panel">
-                        <div class="p-card-header"><h4>Cargando...</h4></div>
+                        <div class="p-card-header"><h4>Cargando activos...</h4></div>
                     </div>
                 </div>
             </section>
@@ -422,6 +488,175 @@
                 <div class="modal-footer">
                     <button type="button" id="price-cancel-btn" class="btn btn-ghost">Cancelar</button>
                     <button type="submit" class="btn btn-primary">Actualizar</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Add Loan Modal -->
+    <div id="modal-loan" class="modal-overlay hidden">
+        <div class="modal-box glass-panel" style="max-width: 520px;">
+            <div class="modal-header">
+                <h3 id="loan-modal-title">🏦 Registrar Préstamo Otorgado</h3>
+                <button id="loan-modal-close" class="modal-close-btn">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+                </button>
+            </div>
+            <form id="loan-form" class="tx-form">
+                <div class="form-group">
+                    <label for="loan-borrower">Deudor / Persona o Negocio</label>
+                    <input type="text" id="loan-borrower" class="glass-input" placeholder="Ej. Tía — Préstamo Negocio, Socio Juan..." required>
+                </div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="loan-initial">Capital Prestado Original (MXN)</label>
+                        <input type="number" id="loan-initial" class="glass-input" placeholder="Ej. 100000" step="0.01" min="1" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="loan-balance">Saldo Insoluto Actual (MXN)</label>
+                        <input type="number" id="loan-balance" class="glass-input" placeholder="Igual al capital si es nuevo" step="0.01" min="0" required>
+                    </div>
+                </div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="loan-rate">Tasa de Interés Mensual (%)</label>
+                        <input type="number" id="loan-rate" class="glass-input" value="1.5" step="0.01" min="0" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="loan-day">Día de Pago / Corte Mensual</label>
+                        <input type="number" id="loan-day" class="glass-input" value="15" min="1" max="31" required>
+                    </div>
+                </div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="loan-date">Fecha de Otorgamiento</label>
+                        <input type="date" id="loan-date" class="glass-input" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="loan-status">Estatus</label>
+                        <select id="loan-status" class="glass-input">
+                            <option value="active">🟢 Activo / Al corriente</option>
+                            <option value="paid_off">✅ Liquidado / Pagado</option>
+                            <option value="defaulted">⚠️ En Mora</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label for="loan-notes">Notas / Condiciones del Pagaré</label>
+                    <input type="text" id="loan-notes" class="glass-input" placeholder="Pagaré firmado, vence en dic 2026...">
+                </div>
+                <div class="modal-footer">
+                    <button type="button" id="btn-cancel-loan" class="btn btn-ghost">Cancelar</button>
+                    <button type="submit" class="btn btn-primary">Guardar Préstamo</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Loan Action Modal (Abono a Capital o Pago de Interés) -->
+    <div id="modal-loan-action" class="modal-overlay hidden">
+        <div class="modal-box glass-panel" style="max-width: 480px;">
+            <div class="modal-header">
+                <h3 id="loan-action-modal-title">💵 Registrar Movimiento de Préstamo</h3>
+                <button id="loan-action-close" class="modal-close-btn">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+                </button>
+            </div>
+            <form id="loan-action-form" class="tx-form">
+                <input type="hidden" id="loan-action-id">
+                <div class="form-group">
+                    <label>Deudor / Préstamo:</label>
+                    <p id="loan-action-borrower-label" style="font-size: 15px; color: var(--eagle-gold); font-weight: 600;"></p>
+                    <p id="loan-action-balance-label" style="font-size: 13px; color: var(--text-secondary); margin-top: 2px;"></p>
+                </div>
+                <div class="form-group">
+                    <label for="loan-action-type">Tipo de Movimiento</label>
+                    <select id="loan-action-type" class="glass-input" required>
+                        <option value="interest">📈 Pago de Interés (Ingreso Pasivo)</option>
+                        <option value="principal">💰 Abono a Capital (Reduce saldo)</option>
+                    </select>
+                </div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="loan-action-amount">Monto Recibido (MXN)</label>
+                        <input type="number" id="loan-action-amount" class="glass-input" placeholder="0.00" step="0.01" min="0.01" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="loan-action-date">Fecha de Pago</label>
+                        <input type="date" id="loan-action-date" class="glass-input" required>
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label for="loan-action-notes">Notas (opcional)</label>
+                    <input type="text" id="loan-action-notes" class="glass-input" placeholder="Transferencia BBVA, quincena...">
+                </div>
+                <div class="modal-footer">
+                    <button type="button" id="btn-cancel-loan-action" class="btn btn-ghost">Cancelar</button>
+                    <button type="submit" class="btn btn-primary">Registrar Pago</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Add Rental Property Modal -->
+    <div id="modal-rental" class="modal-overlay hidden">
+        <div class="modal-box glass-panel" style="max-width: 540px;">
+            <div class="modal-header">
+                <h3 id="rental-modal-title">🏠 Registrar Propiedad en Renta</h3>
+                <button id="rental-modal-close" class="modal-close-btn">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+                </button>
+            </div>
+            <form id="rental-form" class="tx-form">
+                <div class="form-group">
+                    <label for="rental-name">Nombre / Ubicación de la Propiedad</label>
+                    <input type="text" id="rental-name" class="glass-input" placeholder="Ej. Depto Cancún Centro, Local Plaza..." required>
+                </div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="rental-value">Valor Comercial Estimado (MXN)</label>
+                        <input type="number" id="rental-value" class="glass-input" placeholder="Ej. 1800000" step="0.01" min="1" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="rental-rent">Renta Mensual Bruta (MXN)</label>
+                        <input type="number" id="rental-rent" class="glass-input" placeholder="Ej. 12000" step="0.01" min="0" required>
+                    </div>
+                </div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="rental-expenses">Gastos Fijos Mensuales (Mantenimiento, predial)</label>
+                        <input type="number" id="rental-expenses" class="glass-input" value="0.00" step="0.01" min="0">
+                    </div>
+                    <div class="form-group">
+                        <label for="rental-day">Día de Cobro Mensual</label>
+                        <input type="number" id="rental-day" class="glass-input" value="1" min="1" max="31" required>
+                    </div>
+                </div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="rental-tenant">Inquilino Actual</label>
+                        <input type="text" id="rental-tenant" class="glass-input" placeholder="Ej. Juan Pérez">
+                    </div>
+                    <div class="form-group">
+                        <label for="rental-end-date">Vencimiento de Contrato</label>
+                        <input type="date" id="rental-end-date" class="glass-input">
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label for="rental-status">Estatus</label>
+                    <select id="rental-status" class="glass-input">
+                        <option value="occupied">🟢 Rentado / Ocupado</option>
+                        <option value="vacant">🟡 Vacante / En búsqueda</option>
+                        <option value="maintenance">🔴 En Mantenimiento</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="rental-notes">Notas adicionales</label>
+                    <input type="text" id="rental-notes" class="glass-input" placeholder="Depósito en garantía de $12k...">
+                </div>
+                <div class="modal-footer">
+                    <button type="button" id="btn-cancel-rental" class="btn btn-ghost">Cancelar</button>
+                    <button type="submit" class="btn btn-primary">Guardar Propiedad</button>
                 </div>
             </form>
         </div>
