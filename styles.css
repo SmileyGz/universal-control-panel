@@ -1,43 +1,57 @@
 :root {
-    /* ===== Mexican Flag Color Palette ===== */
-    --mx-green:        #006847;   /* Official Pantone 3425 C */
-    --mx-green-light:  #008c5b;
-    --mx-green-glow:   rgba(0, 104, 71, 0.45);
-    --mx-red:          #CE1126;   /* Official Pantone 186 C */
-    --mx-red-light:    #e8293c;
-    --mx-red-glow:     rgba(206, 17, 38, 0.4);
-    --mx-white:        #F2F2EF;   /* Warm off-white, like the flag's white band */
+    /* ===== Azteca FinTech Institutional Palette ===== */
+    --azteca-green:          #00843D;   /* Official Banco Azteca Emerald */
+    --azteca-green-vibrant:  #00A859;   /* High-energy electric emerald for actions & positive P&L */
+    --azteca-green-glow:     rgba(0, 168, 89, 0.35);
     
-    /* Eagle/Coat of Arms inspired accent — warm burnished gold */
-    --eagle-gold:      #C8973A;
-    --eagle-gold-dark: #9A6E22;
-    --eagle-brown:     #6B3A1F;
+    /* Solar Accent (Wealth, CETES, Fixed Income, Highlights) */
+    --azteca-gold:           #FFC72C;   /* Warm solar gold */
+    --azteca-gold-dark:      #D89E18;
+    --azteca-gold-glow:      rgba(255, 199, 44, 0.25);
 
-    /* Backgrounds — deep dark tone inspired by dark bronze/obsidian */
-    --bg-base:         #0A100D;   /* Very dark green-black */
-    --bg-surface:      rgba(15, 28, 20, 0.70);
-    --bg-surface-hover:rgba(22, 45, 30, 0.85);
-    --border-color:    rgba(0, 104, 71, 0.25);
+    /* Backwards compatibility aliases for existing JS & views */
+    --mx-green:              var(--azteca-green);
+    --mx-green-light:        var(--azteca-green-vibrant);
+    --mx-green-glow:         var(--azteca-green-glow);
+    --eagle-gold:            var(--azteca-gold);
+    --eagle-gold-dark:       var(--azteca-gold-dark);
+    --eagle-brown:           #5C3610;
 
-    /* Text */
-    --text-primary:    var(--eagle-gold);   /* Eagle gold as main text */
-    --text-secondary:  rgba(200, 151, 58, 0.65);
-    --text-muted:      rgba(200, 151, 58, 0.35);
-    --text-on-dark:    var(--mx-white);
+    /* Semantic Colors */
+    --mx-red:                #E53935;
+    --mx-red-light:          #FF4D4D;
+    --mx-red-glow:           rgba(255, 77, 77, 0.35);
+    --mx-white:              #F8FAF9;   /* High-luminance crisp ivory white */
 
-    /* Semantic colors (income=green, expense=red per flag) */
-    --success:   var(--mx-green-light);
-    --danger:    var(--mx-red-light);
+    /* Surfaces & Backgrounds (Modern Obsidian Jade) */
+    --bg-base:               #09110E;   /* Deep obsidian, zero murkiness */
+    --bg-surface:            rgba(15, 31, 24, 0.78);
+    --bg-surface-hover:      rgba(20, 44, 33, 0.90);
+    --border-color:          rgba(0, 168, 89, 0.22);
+    --border-color-strong:   rgba(0, 168, 89, 0.45);
+
+    /* High-Contrast Typography (Resolves the 2.8:1 contrast failure) */
+    --text-primary:          #F8FAF9;   /* Crisp ivory white (WCAG AAA 14.5:1) */
+    --text-secondary:        #C3D5CC;   /* Soft sage green for effortless reading */
+    --text-muted:            #7E988C;   /* Muted labels & tickers */
+    --text-on-dark:          #FFFFFF;   /* Pure white for headings & cards */
+
+    /* Financial Indicators */
+    --success:               var(--azteca-green-vibrant);
+    --danger:                var(--mx-red-light);
+    --accent:                var(--azteca-gold);
 
     /* Typography */
-    --font-sans:    'Inter', system-ui, sans-serif;
-    --font-heading: 'Outfit', system-ui, sans-serif;
+    --font-sans:             'Inter', system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
+    --font-heading:          'Outfit', system-ui, sans-serif;
+    --font-mono:             'JetBrains Mono', monospace;
 
     /* Radii & Transitions */
-    --radius-md: 12px;
-    --radius-lg: 16px;
-    --radius-xl: 24px;
-    --transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    --radius-sm:             6px;
+    --radius-md:             10px;
+    --radius-lg:             14px;
+    --radius-xl:             20px;
+    --transition:            all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 /* ============================================
@@ -56,9 +70,9 @@ body {
     min-height: 100vh;
     overflow-x: hidden;
     background-image:
-        radial-gradient(ellipse at 10% 60%, rgba(0, 104, 71, 0.18) 0%, transparent 45%),
-        radial-gradient(ellipse at 90% 20%, rgba(206, 17, 38, 0.15) 0%, transparent 40%),
-        radial-gradient(ellipse at 50% 100%, rgba(200, 151, 58, 0.07) 0%, transparent 50%);
+        radial-gradient(circle at 10% 20%, rgba(0, 132, 61, 0.15) 0%, transparent 40%),
+        radial-gradient(circle at 90% 80%, rgba(255, 199, 44, 0.07) 0%, transparent 35%),
+        radial-gradient(ellipse at 50% 100%, rgba(0, 168, 89, 0.08) 0%, transparent 60%);
 }
 
 h1, h2, h3, h4, h5, h6 {
@@ -67,26 +81,36 @@ h1, h2, h3, h4, h5, h6 {
     color: var(--text-on-dark);
 }
 
+/* Tabular figures for financial numbers */
+.amount,
+.p-card-amount,
+.loan-card-balance,
+table td,
+table th,
+.font-mono-num {
+    font-variant-numeric: tabular-nums;
+}
+
 /* ============================================
    GLASSMORPHISM
    ============================================ */
 .glass-panel {
     background: var(--bg-surface);
-    backdrop-filter: blur(14px);
-    -webkit-backdrop-filter: blur(14px);
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
     border: 1px solid var(--border-color);
     border-radius: var(--radius-lg);
     box-shadow:
-        0 4px 24px rgba(0, 0, 0, 0.4),
-        inset 0 1px 0 rgba(200, 151, 58, 0.06);
+        0 4px 24px rgba(0, 0, 0, 0.45),
+        inset 0 1px 0 rgba(0, 168, 89, 0.12);
 }
 
 .glass-input {
-    background: rgba(0, 0, 0, 0.35);
+    background: rgba(9, 17, 14, 0.70);
     border: 1px solid var(--border-color);
-    color: var(--eagle-gold);
+    color: var(--text-primary);
     border-radius: var(--radius-md);
-    padding: 8px 14px;
+    padding: 9px 14px;
     font-family: var(--font-sans);
     font-size: 14px;
     outline: none;
@@ -94,8 +118,8 @@ h1, h2, h3, h4, h5, h6 {
 }
 .glass-input::placeholder { color: var(--text-muted); }
 .glass-input:focus {
-    border-color: var(--eagle-gold);
-    box-shadow: 0 0 0 2px rgba(200, 151, 58, 0.25);
+    border-color: var(--azteca-gold);
+    box-shadow: 0 0 0 2px var(--azteca-gold-glow);
 }
 
 /* ============================================
@@ -118,12 +142,9 @@ h1, h2, h3, h4, h5, h6 {
     border-right: 1px solid var(--border-color);
     border-radius: 0;
     z-index: 10;
-    /* Subtle left-side green stripe feel */
-    background: linear-gradient(180deg, rgba(0, 104, 71, 0.12) 0%, rgba(10, 16, 13, 0.85) 100%);
-    backdrop-filter: blur(14px);
-    -webkit-backdrop-filter: blur(14px);
-    border: none;
-    border-right: 1px solid rgba(0, 104, 71, 0.3);
+    background: linear-gradient(180deg, rgba(0, 132, 61, 0.12) 0%, rgba(9, 17, 14, 0.95) 100%);
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
 }
 
 .brand {
@@ -137,23 +158,23 @@ h1, h2, h3, h4, h5, h6 {
     width: 42px;
     height: 42px;
     border-radius: 10px;
-    /* Flag tricolor gradient as logo background */
-    background: linear-gradient(135deg, var(--mx-green) 0%, #ffffff 50%, var(--mx-red) 100%);
+    background: linear-gradient(135deg, var(--azteca-green) 0%, #00a859 100%);
     display: flex;
     align-items: center;
     justify-content: center;
     font-family: var(--font-heading);
-    font-weight: 700;
-    font-size: 20px;
-    color: var(--eagle-brown);
-    box-shadow: 0 0 18px rgba(0, 104, 71, 0.5), 0 0 8px rgba(206, 17, 38, 0.25);
-    border: 1px solid rgba(200, 151, 58, 0.3);
+    font-weight: 800;
+    font-size: 19px;
+    color: #FFFFFF;
+    box-shadow: 0 4px 18px var(--azteca-green-glow);
+    border: 1px solid rgba(255, 199, 44, 0.45);
 }
 
 .brand h1 {
-    font-size: 24px;
-    letter-spacing: -0.5px;
-    color: var(--eagle-gold);
+    font-size: 22px;
+    letter-spacing: -0.4px;
+    color: var(--text-on-dark);
+    font-weight: 700;
 }
 
 nav {
@@ -172,28 +193,29 @@ nav {
     color: var(--text-secondary);
     text-decoration: none;
     font-weight: 500;
-    font-size: 15px;
+    font-size: 14px;
     transition: var(--transition);
 }
-.nav-item svg { opacity: 0.6; transition: var(--transition); }
+.nav-item svg { opacity: 0.7; transition: var(--transition); }
 
 .nav-item:hover {
-    background: rgba(0, 104, 71, 0.15);
-    color: var(--eagle-gold);
+    background: rgba(0, 168, 89, 0.14);
+    color: #FFFFFF;
     transform: translateX(4px);
 }
-.nav-item:hover svg { opacity: 1; color: var(--mx-green-light); }
+.nav-item:hover svg { opacity: 1; color: var(--azteca-green-vibrant); }
 
 .nav-item.active {
-    background: linear-gradient(90deg, rgba(0, 104, 71, 0.25), transparent);
-    color: var(--eagle-gold);
-    border-left: 3px solid var(--mx-green);
+    background: linear-gradient(90deg, rgba(0, 168, 89, 0.22), transparent);
+    color: #FFFFFF;
+    border-left: 3px solid var(--azteca-green-vibrant);
+    font-weight: 600;
 }
-.nav-item.active svg { color: var(--mx-green-light); opacity: 1; }
+.nav-item.active svg { color: var(--azteca-green-vibrant); opacity: 1; }
 
 .sidebar-footer {
     padding-top: 20px;
-    border-top: 1px solid rgba(0, 104, 71, 0.3);
+    border-top: 1px solid var(--border-color);
     font-size: 12px;
     color: var(--text-muted);
 }
@@ -204,19 +226,19 @@ nav {
     gap: 8px;
 }
 
-/* Pulsing dot — green like the flag */
+/* Pulsing dot — electric emerald */
 .pulse {
     width: 8px;
     height: 8px;
-    background-color: var(--mx-green-light);
+    background-color: var(--azteca-green-vibrant);
     border-radius: 50%;
     animation: pulse 2.2s infinite;
 }
 
 @keyframes pulse {
-    0%   { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(0, 140, 91, 0.7); }
-    70%  { transform: scale(1);    box-shadow: 0 0 0 7px rgba(0, 140, 91, 0); }
-    100% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(0, 140, 91, 0); }
+    0%   { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(0, 168, 89, 0.7); }
+    70%  { transform: scale(1);    box-shadow: 0 0 0 7px rgba(0, 168, 89, 0); }
+    100% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(0, 168, 89, 0); }
 }
 
 /* ============================================
@@ -235,7 +257,7 @@ nav {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    padding: 20px 32px;
+    padding: 18px 32px;
     margin: 0 -32px 32px -32px;
     position: sticky;
     top: 0;
@@ -244,19 +266,18 @@ nav {
     border-top: none;
     border-left: none;
     border-right: none;
-    /* Thin tricolor accent bar at the top of the topbar */
-    border-bottom: 3px solid;
-    border-image: linear-gradient(90deg, var(--mx-green) 33%, #ffffff 33% 66%, var(--mx-red) 66%) 1;
-    background: rgba(10, 16, 13, 0.75);
-    backdrop-filter: blur(14px);
-    -webkit-backdrop-filter: blur(14px);
-    box-shadow: 0 4px 24px rgba(0,0,0,0.4);
+    border-bottom: 2px solid;
+    border-image: linear-gradient(90deg, var(--azteca-green) 0%, var(--azteca-gold) 50%, var(--azteca-green) 100%) 1;
+    background: rgba(9, 17, 14, 0.82);
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
+    box-shadow: 0 4px 24px rgba(0,0,0,0.45);
 }
 
 .page-title h2 {
     font-size: 28px;
     font-weight: 700;
-    color: var(--mx-white);
+    color: var(--text-on-dark);
 }
 
 /* ============================================
@@ -281,21 +302,21 @@ nav {
 }
 
 .kpi-card {
-    padding: 26px;
+    padding: 24px;
     position: relative;
     overflow: hidden;
-    transition: transform 0.3s ease, box-shadow 0.3s ease;
+    transition: transform 0.25s ease, box-shadow 0.25s ease, border-color 0.25s ease;
 }
 .kpi-card::before {
     content: '';
     position: absolute;
     top: 0; left: 0; right: 0;
     height: 3px;
-    background: linear-gradient(90deg, var(--mx-green), var(--eagle-gold), var(--mx-red));
+    background: linear-gradient(90deg, var(--azteca-green), var(--azteca-gold));
     opacity: 0;
-    transition: opacity 0.3s ease;
+    transition: opacity 0.25s ease;
 }
-.kpi-card:hover { transform: translateY(-5px); box-shadow: 0 12px 32px rgba(0,0,0,0.5); }
+.kpi-card:hover { transform: translateY(-4px); box-shadow: 0 12px 32px rgba(0,0,0,0.55); border-color: var(--border-color-strong); }
 .kpi-card:hover::before { opacity: 1; }
 
 /* Net Cashflow card — gradient border */
@@ -303,27 +324,28 @@ nav {
     border: 1px solid transparent;
     background-image:
         linear-gradient(var(--bg-surface), var(--bg-surface)),
-        linear-gradient(135deg, var(--mx-green), var(--eagle-gold), var(--mx-red));
+        linear-gradient(135deg, var(--azteca-green), var(--azteca-gold));
     background-origin: border-box;
     background-clip: padding-box, border-box;
 }
 
 .kpi-card h3 {
     font-family: var(--font-sans);
-    font-size: 12px;
+    font-size: 11px;
     font-weight: 600;
     color: var(--text-secondary);
-    margin-bottom: 10px;
+    margin-bottom: 8px;
     text-transform: uppercase;
-    letter-spacing: 1px;
+    letter-spacing: 1.2px;
 }
 
 .kpi-card .amount {
     font-family: var(--font-heading);
     font-size: 30px;
     font-weight: 700;
-    color: var(--eagle-gold);
+    color: var(--text-on-dark);
     margin-bottom: 6px;
+    font-variant-numeric: tabular-nums;
 }
 
 .kpi-card .trend {
@@ -333,14 +355,14 @@ nav {
 
 /* Savings card highlight */
 .highlight-bg {
-    background: linear-gradient(135deg, rgba(0, 104, 71, 0.12), rgba(200, 151, 58, 0.08));
-    border-color: rgba(200, 151, 58, 0.3);
+    background: linear-gradient(135deg, rgba(0, 132, 61, 0.16), rgba(255, 199, 44, 0.08));
+    border-color: rgba(255, 199, 44, 0.35);
 }
 
 /* Semantic color helpers */
-.text-green { color: var(--mx-green-light); }
-.text-red   { color: var(--mx-red-light); }
-.text-gold  { color: var(--eagle-gold); }
+.text-green { color: var(--azteca-green-vibrant) !important; }
+.text-red   { color: var(--mx-red-light) !important; }
+.text-gold  { color: var(--azteca-gold) !important; }
 
 /* ============================================
    CHARTS
@@ -358,7 +380,7 @@ nav {
 }
 
 .chart-header { margin-bottom: 20px; }
-.chart-header h3 { font-size: 17px; color: var(--mx-white); }
+.chart-header h3 { font-size: 17px; color: var(--text-on-dark); }
 
 .chart-wrapper {
     flex: 1;
@@ -383,22 +405,23 @@ nav {
 table { width: 100%; border-collapse: collapse; }
 
 th, td {
-    padding: 14px 16px;
+    padding: 13px 16px;
     text-align: left;
     border-bottom: 1px solid var(--border-color);
 }
 
 th {
-    color: var(--eagle-gold-dark);
+    color: var(--text-secondary);
     font-weight: 600;
-    font-size: 12px;
+    font-size: 11px;
     text-transform: uppercase;
     letter-spacing: 1px;
+    background-color: rgba(9, 17, 14, 0.50);
 }
 
-td { font-size: 14px; color: var(--text-on-dark); }
+td { font-size: 14px; color: var(--text-primary); font-variant-numeric: tabular-nums; }
 
-tr:hover td { background-color: rgba(0, 104, 71, 0.05); }
+tr:hover td { background-color: rgba(0, 168, 89, 0.08); }
 
 .align-right { text-align: right; }
 .text-center { text-align: center; }
@@ -411,8 +434,8 @@ tr:hover td { background-color: rgba(0, 104, 71, 0.05); }
     text-transform: uppercase;
     letter-spacing: 0.5px;
 }
-.badge.income  { background: rgba(0, 140, 91, 0.15);  color: var(--mx-green-light); }
-.badge.expense { background: rgba(206, 17, 38, 0.12); color: var(--mx-red-light); }
+.badge.income  { background: rgba(0, 168, 89, 0.18); color: var(--azteca-green-vibrant); border: 1px solid rgba(0, 168, 89, 0.3); }
+.badge.expense { background: rgba(229, 57, 53, 0.15); color: var(--mx-red-light); border: 1px solid rgba(229, 57, 53, 0.3); }
 
 /* ============================================
    PORTFOLIO
@@ -428,22 +451,23 @@ tr:hover td { background-color: rgba(0, 104, 71, 0.05); }
     display: flex;
     flex-direction: column;
     gap: 12px;
-    transition: transform 0.3s ease, border-color 0.3s ease;
+    transition: transform 0.25s ease, border-color 0.25s ease, box-shadow 0.25s ease;
 }
 .portfolio-card:hover {
-    transform: translateY(-5px);
-    border-color: rgba(200, 151, 58, 0.4);
-    box-shadow: 0 12px 32px rgba(0,0,0,0.5), 0 0 0 1px rgba(200, 151, 58, 0.1);
+    transform: translateY(-4px);
+    border-color: rgba(0, 168, 89, 0.45);
+    box-shadow: 0 12px 32px rgba(0,0,0,0.55), 0 0 0 1px rgba(0, 168, 89, 0.2);
 }
 
 .p-card-header { display: flex; justify-content: space-between; align-items: center; }
-.p-card-header h4 { font-size: 17px; color: var(--mx-white); }
+.p-card-header h4 { font-size: 17px; color: var(--text-on-dark); }
 
 .p-card-amount {
     font-family: var(--font-heading);
     font-size: 26px;
     font-weight: 700;
-    color: var(--eagle-gold);
+    color: var(--azteca-gold);
+    font-variant-numeric: tabular-nums;
 }
 
 /* ============================================
@@ -537,7 +561,8 @@ tr:hover td { background-color: rgba(0, 104, 71, 0.05); }
     max-width: 520px;
     padding: 32px;
     animation: slideUp 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-    border-color: rgba(0, 104, 71, 0.4);
+    border-color: var(--border-color-strong);
+    background: rgba(13, 26, 20, 0.94);
 }
 
 @keyframes slideUp {
@@ -554,7 +579,7 @@ tr:hover td { background-color: rgba(0, 104, 71, 0.05); }
 
 .modal-header h3 {
     font-size: 22px;
-    color: var(--eagle-gold);
+    color: var(--text-on-dark);
 }
 
 .modal-close-btn {
@@ -566,7 +591,7 @@ tr:hover td { background-color: rgba(0, 104, 71, 0.05); }
     border-radius: 6px;
     transition: color 0.2s, background 0.2s;
 }
-.modal-close-btn:hover { color: var(--mx-red-light); background: rgba(206, 17, 38, 0.1); }
+.modal-close-btn:hover { color: var(--mx-red-light); background: rgba(229, 57, 53, 0.15); }
 
 /* ============================================
    FORM STYLES
@@ -586,11 +611,11 @@ tr:hover td { background-color: rgba(0, 104, 71, 0.05); }
 }
 
 .form-group label {
-    font-size: 12px;
+    font-size: 11px;
     font-weight: 600;
-    color: var(--eagle-gold-dark);
+    color: var(--text-secondary);
     text-transform: uppercase;
-    letter-spacing: 0.8px;
+    letter-spacing: 0.9px;
 }
 
 .form-group .glass-input {
@@ -600,8 +625,8 @@ tr:hover td { background-color: rgba(0, 104, 71, 0.05); }
 }
 
 select.glass-input option {
-    background-color: #0f1c14;
-    color: var(--mx-white);
+    background-color: #0d1b14;
+    color: var(--text-primary);
 }
 
 .modal-footer {
@@ -618,7 +643,7 @@ select.glass-input option {
     padding: 11px 24px;
     border-radius: var(--radius-md);
     font-family: var(--font-sans);
-    font-size: 15px;
+    font-size: 14px;
     font-weight: 600;
     cursor: pointer;
     border: none;
@@ -626,14 +651,14 @@ select.glass-input option {
 }
 
 .btn-primary {
-    background: linear-gradient(135deg, var(--mx-green), #009e5c);
+    background: linear-gradient(135deg, var(--azteca-green), var(--azteca-green-vibrant));
     color: white;
-    box-shadow: 0 4px 14px rgba(0, 104, 71, 0.4);
+    box-shadow: 0 4px 14px var(--azteca-green-glow);
 }
 .btn-primary:hover {
-    background: linear-gradient(135deg, #009e5c, var(--mx-green));
+    background: linear-gradient(135deg, var(--azteca-green-vibrant), #00ba63);
     transform: translateY(-2px);
-    box-shadow: 0 6px 20px rgba(0, 104, 71, 0.6);
+    box-shadow: 0 6px 20px rgba(0, 168, 89, 0.5);
 }
 
 .btn-ghost {
@@ -642,9 +667,9 @@ select.glass-input option {
     border: 1px solid var(--border-color);
 }
 .btn-ghost:hover {
-    background: rgba(255,255,255,0.04);
-    color: var(--mx-white);
-    border-color: rgba(255,255,255,0.15);
+    background: rgba(255,255,255,0.06);
+    color: var(--text-on-dark);
+    border-color: rgba(255,255,255,0.2);
 }
 
 /* ============================================
@@ -666,8 +691,8 @@ select.glass-input option {
 }
 
 .toast.hidden { display: none; }
-.toast.success { background: linear-gradient(135deg, var(--mx-green), #009e5c); }
-.toast.error   { background: linear-gradient(135deg, var(--mx-red), #e8293c); }
+.toast.success { background: linear-gradient(135deg, var(--azteca-green), var(--azteca-green-vibrant)); }
+.toast.error   { background: linear-gradient(135deg, var(--mx-red), var(--mx-red-light)); }
 
 /* ============================================
    INVESTMENT VIEW & TRADING STYLES
@@ -675,7 +700,7 @@ select.glass-input option {
 .pill-group {
     display: flex;
     gap: 8px;
-    background: rgba(10, 16, 13, 0.6);
+    background: rgba(9, 17, 14, 0.7);
     padding: 4px;
     border-radius: var(--radius-md);
     border: 1px solid var(--border-color);
@@ -696,51 +721,51 @@ select.glass-input option {
 }
 
 .pill-btn:hover {
-    color: var(--mx-white);
-    background: rgba(255, 255, 255, 0.05);
+    color: var(--text-on-dark);
+    background: rgba(255, 255, 255, 0.06);
 }
 
 .pill-btn.active {
-    background: var(--eagle-gold);
-    color: #0A100D;
-    font-weight: 600;
-    box-shadow: 0 2px 8px rgba(200, 151, 58, 0.3);
+    background: var(--azteca-gold);
+    color: #09110E;
+    font-weight: 700;
+    box-shadow: 0 2px 10px var(--azteca-gold-glow);
 }
 
 /* Asset Badges */
 .badge.fibra {
     background: rgba(122, 40, 138, 0.2);
-    color: #c770e3;
-    border: 1px solid rgba(199, 112, 227, 0.3);
+    color: #d687ef;
+    border: 1px solid rgba(199, 112, 227, 0.35);
 }
 
 .badge.etf {
-    background: rgba(0, 168, 232, 0.15);
-    color: #00b4d8;
-    border: 1px solid rgba(0, 180, 216, 0.3);
+    background: rgba(0, 168, 232, 0.18);
+    color: #38bdf8;
+    border: 1px solid rgba(0, 180, 216, 0.35);
 }
 
 .badge.stock {
-    background: rgba(0, 140, 91, 0.15);
-    color: var(--mx-green-light);
-    border: 1px solid rgba(0, 140, 91, 0.3);
+    background: rgba(0, 168, 89, 0.18);
+    color: var(--azteca-green-vibrant);
+    border: 1px solid rgba(0, 168, 89, 0.35);
 }
 
 .badge.cetes {
-    background: rgba(200, 151, 58, 0.15);
-    color: var(--eagle-gold);
-    border: 1px solid rgba(200, 151, 58, 0.3);
+    background: rgba(255, 199, 44, 0.16);
+    color: var(--azteca-gold);
+    border: 1px solid rgba(255, 199, 44, 0.35);
 }
 
 .badge.otro {
-    background: rgba(107, 58, 31, 0.2);
-    color: #d4a373;
-    border: 1px solid rgba(212, 163, 115, 0.3);
+    background: rgba(107, 58, 31, 0.25);
+    color: #e5b88f;
+    border: 1px solid rgba(212, 163, 115, 0.35);
 }
 
 /* P&L Indicators */
 .pnl-positive {
-    color: var(--mx-green-light);
+    color: var(--azteca-green-vibrant);
     font-weight: 600;
 }
 
@@ -760,21 +785,21 @@ select.glass-input option {
     cursor: pointer;
     padding: 3px 8px;
     border-radius: 6px;
-    background: rgba(255, 255, 255, 0.03);
-    border: 1px dashed rgba(200, 151, 58, 0.3);
+    background: rgba(255, 255, 255, 0.04);
+    border: 1px dashed rgba(0, 168, 89, 0.4);
     transition: var(--transition);
 }
 
 .price-tag-clickable:hover {
-    background: rgba(200, 151, 58, 0.12);
-    border-color: var(--eagle-gold);
+    background: rgba(0, 168, 89, 0.15);
+    border-color: var(--azteca-green-vibrant);
 }
 
 .action-btn-sm {
     background: rgba(255, 255, 255, 0.05);
     border: 1px solid var(--border-color);
     color: var(--text-secondary);
-    padding: 4px 10px;
+    padding: 5px 12px;
     border-radius: 6px;
     font-size: 12px;
     cursor: pointer;
@@ -782,9 +807,9 @@ select.glass-input option {
 }
 
 .action-btn-sm:hover {
-    background: rgba(200, 151, 58, 0.15);
-    color: var(--eagle-gold);
-    border-color: var(--eagle-gold);
+    background: rgba(0, 168, 89, 0.18);
+    color: #FFFFFF;
+    border-color: var(--azteca-green-vibrant);
 }
 
 .align-center {
@@ -792,7 +817,7 @@ select.glass-input option {
 }
 
 .text-gold {
-    color: var(--eagle-gold) !important;
+    color: var(--azteca-gold) !important;
 }
 
 /* ============================================
@@ -804,6 +829,7 @@ select.glass-input option {
     color: var(--text-on-dark);
     font-family: var(--font-heading);
     margin: 8px 0 4px 0;
+    font-variant-numeric: tabular-nums;
 }
 
 .loan-progress-container {
@@ -816,7 +842,7 @@ select.glass-input option {
 }
 
 .loan-progress-fill {
-    background: linear-gradient(90deg, var(--eagle-gold), var(--mx-green-light));
+    background: linear-gradient(90deg, var(--azteca-gold), var(--azteca-green-vibrant));
     height: 100%;
     border-radius: 999px;
     transition: width 0.4s ease;
@@ -828,6 +854,7 @@ select.glass-input option {
     font-size: 12px;
     color: var(--text-secondary);
     margin-bottom: 6px;
+    font-variant-numeric: tabular-nums;
 }
 
 .loan-actions-bar {
@@ -835,15 +862,15 @@ select.glass-input option {
     gap: 8px;
     margin-top: 14px;
     padding-top: 10px;
-    border-top: 1px solid rgba(0, 104, 71, 0.15);
+    border-top: 1px solid rgba(0, 168, 89, 0.20);
 }
 
 .btn-loan-action {
     flex: 1;
-    background: rgba(200, 151, 58, 0.1);
-    border: 1px solid rgba(200, 151, 58, 0.25);
-    color: var(--eagle-gold);
-    padding: 6px 10px;
+    background: rgba(255, 199, 44, 0.12);
+    border: 1px solid rgba(255, 199, 44, 0.3);
+    color: var(--azteca-gold);
+    padding: 7px 10px;
     border-radius: 6px;
     font-size: 11px;
     font-weight: 600;
@@ -853,41 +880,42 @@ select.glass-input option {
 }
 
 .btn-loan-action:hover {
-    background: rgba(200, 151, 58, 0.25);
-    border-color: var(--eagle-gold);
-    color: var(--mx-white);
+    background: rgba(255, 199, 44, 0.25);
+    border-color: var(--azteca-gold);
+    color: #FFFFFF;
 }
 
 .btn-loan-action.interest {
-    background: rgba(0, 140, 91, 0.12);
-    border-color: rgba(0, 140, 91, 0.3);
-    color: var(--mx-green-light);
+    background: rgba(0, 168, 89, 0.14);
+    border-color: rgba(0, 168, 89, 0.35);
+    color: var(--azteca-green-vibrant);
 }
 
 .btn-loan-action.interest:hover {
-    background: rgba(0, 140, 91, 0.25);
-    border-color: var(--mx-green-light);
-    color: var(--mx-white);
+    background: rgba(0, 168, 89, 0.28);
+    border-color: var(--azteca-green-vibrant);
+    color: #FFFFFF;
 }
 
 .cap-rate-badge {
     display: inline-flex;
     align-items: center;
     gap: 4px;
-    background: rgba(0, 140, 91, 0.15);
-    color: var(--mx-green-light);
-    border: 1px solid rgba(0, 140, 91, 0.3);
+    background: rgba(0, 168, 89, 0.15);
+    color: var(--azteca-green-vibrant);
+    border: 1px solid rgba(0, 168, 89, 0.35);
     padding: 3px 8px;
     border-radius: 6px;
     font-size: 12px;
     font-weight: 600;
+    font-variant-numeric: tabular-nums;
 }
 
 .rental-net-callout {
-    background: rgba(0, 104, 71, 0.12);
-    border: 1px solid rgba(0, 104, 71, 0.25);
+    background: rgba(0, 132, 61, 0.12);
+    border: 1px solid rgba(0, 168, 89, 0.25);
     border-radius: 8px;
-    padding: 8px 12px;
+    padding: 10px 14px;
     margin: 10px 0;
     display: flex;
     justify-content: space-between;
