@@ -669,3 +669,130 @@ select.glass-input option {
 .toast.success { background: linear-gradient(135deg, var(--mx-green), #009e5c); }
 .toast.error   { background: linear-gradient(135deg, var(--mx-red), #e8293c); }
 
+/* ============================================
+   INVESTMENT VIEW & TRADING STYLES
+   ============================================ */
+.pill-group {
+    display: flex;
+    gap: 8px;
+    background: rgba(10, 16, 13, 0.6);
+    padding: 4px;
+    border-radius: var(--radius-md);
+    border: 1px solid var(--border-color);
+    flex-wrap: wrap;
+}
+
+.pill-btn {
+    background: transparent;
+    border: none;
+    color: var(--text-secondary);
+    padding: 6px 14px;
+    border-radius: 8px;
+    font-family: var(--font-sans);
+    font-size: 13px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: var(--transition);
+}
+
+.pill-btn:hover {
+    color: var(--mx-white);
+    background: rgba(255, 255, 255, 0.05);
+}
+
+.pill-btn.active {
+    background: var(--eagle-gold);
+    color: #0A100D;
+    font-weight: 600;
+    box-shadow: 0 2px 8px rgba(200, 151, 58, 0.3);
+}
+
+/* Asset Badges */
+.badge.fibra {
+    background: rgba(122, 40, 138, 0.2);
+    color: #c770e3;
+    border: 1px solid rgba(199, 112, 227, 0.3);
+}
+
+.badge.etf {
+    background: rgba(0, 168, 232, 0.15);
+    color: #00b4d8;
+    border: 1px solid rgba(0, 180, 216, 0.3);
+}
+
+.badge.stock {
+    background: rgba(0, 140, 91, 0.15);
+    color: var(--mx-green-light);
+    border: 1px solid rgba(0, 140, 91, 0.3);
+}
+
+.badge.cetes {
+    background: rgba(200, 151, 58, 0.15);
+    color: var(--eagle-gold);
+    border: 1px solid rgba(200, 151, 58, 0.3);
+}
+
+.badge.otro {
+    background: rgba(107, 58, 31, 0.2);
+    color: #d4a373;
+    border: 1px solid rgba(212, 163, 115, 0.3);
+}
+
+/* P&L Indicators */
+.pnl-positive {
+    color: var(--mx-green-light);
+    font-weight: 600;
+}
+
+.pnl-negative {
+    color: var(--mx-red-light);
+    font-weight: 600;
+}
+
+.pnl-neutral {
+    color: var(--text-muted);
+}
+
+.price-tag-clickable {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    cursor: pointer;
+    padding: 3px 8px;
+    border-radius: 6px;
+    background: rgba(255, 255, 255, 0.03);
+    border: 1px dashed rgba(200, 151, 58, 0.3);
+    transition: var(--transition);
+}
+
+.price-tag-clickable:hover {
+    background: rgba(200, 151, 58, 0.12);
+    border-color: var(--eagle-gold);
+}
+
+.action-btn-sm {
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid var(--border-color);
+    color: var(--text-secondary);
+    padding: 4px 10px;
+    border-radius: 6px;
+    font-size: 12px;
+    cursor: pointer;
+    transition: var(--transition);
+}
+
+.action-btn-sm:hover {
+    background: rgba(200, 151, 58, 0.15);
+    color: var(--eagle-gold);
+    border-color: var(--eagle-gold);
+}
+
+.align-center {
+    text-align: center;
+}
+
+.text-gold {
+    color: var(--eagle-gold) !important;
+}
+
+

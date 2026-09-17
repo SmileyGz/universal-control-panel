@@ -10,8 +10,8 @@ The application relies on Supabase as the primary database backend, containing t
 
 2. **`finance_portfolio`**
    - **Purpose:** Stores current business assets, savings accounts, and investment values.
-   - **Columns:** `id`, `name`, `category` (e.g., 'Préstamos', 'Inversiones', 'Liquidez', 'Ahorro', 'Negocios', 'Otros'), `value`, `notes`, `icon`.
-   - **Views:** Feeds the Portfolio Distribution chart and the Portfolio View.
+   - **Columns:** `id`, `name`, `category` (e.g., 'Préstamos', 'Inversiones', 'Liquidez', 'Ahorro', 'Negocios', 'Otros'), `value`, `notes`, `icon`, `ticker`, `asset_type` ('fibra', 'etf', 'stock', 'cetes', 'negocio', 'otro'), `current_price`, `target_allocation`.
+   - **Views:** Feeds the Portfolio Distribution chart, the Portfolio View, and the Investments View.
    - **Hub-and-Spoke Architecture:** This table directly manages the performance metrics of the remote Storefronts (Vite + React) connected to the MAIN Personal Engine (Supabase). The Universal Control Panel acts as the central Admin Dashboard for these properties.
      - Known Storefronts (Category: `Negocios`):
        - Secretitos
@@ -20,6 +20,12 @@ The application relies on Supabase as the primary database backend, containing t
        - Travel Services
        - Jonla Agency
      - *Note: Additional storefronts may be provisioned into this table dynamically.*
+
+3. **`finance_investment_lots`**
+   - **Purpose:** Lot-based trading log for stocks, ETFs, FIBRAs, and fixed-income assets.
+   - **Columns:** `id`, `portfolio_id` (FK to `finance_portfolio.id`), `ticker`, `transaction_type` ('buy', 'sell', 'dividend'), `buy_date`, `shares`, `purchase_price`, `fee`, `broker` (e.g. 'GBM+'), `notes`.
+   - **Views:** Feeds the Investments & Stocks view, calculating Weighted Average Cost Basis, Unrealized P&L ($ and %), and historical purchase lot logs.
+   - **Migration Script:** [supabase_investments_schema.sql](file:///Users/josegonzalez/Documents/Smileys%20Org/02_Businesses/UCP/supabase_investments_schema.sql).
 
 ## Deployment Workflow (GitHub Pages)
 - **Hosting:** The web app is a static site hosted via GitHub Pages.

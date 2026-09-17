@@ -40,6 +40,10 @@
                     <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="7" width="20" height="14" rx="2" ry="2"/><path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"/></svg>
                     Portfolio
                 </a>
+                <a href="#" class="nav-item" data-target="investments">
+                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="22 7 13.5 15.5 8.5 10.5 2 17"/><polyline points="16 7 22 7 22 13"/></svg>
+                    Inversiones & Stocks
+                </a>
 
             </nav>
             <div class="sidebar-footer">
@@ -148,6 +152,76 @@
                 </div>
             </section>
 
+            <!-- Investments View (Stocks, ETFs, FIBRAs, CETES) -->
+            <section id="view-investments" class="view-section">
+                <!-- Top Summary KPIs -->
+                <div class="kpi-grid">
+                    <div class="kpi-card glass-panel gradient-border">
+                        <h3>Capital Invertido</h3>
+                        <p class="amount" id="inv-kpi-invested">$0.00</p>
+                        <span class="trend" id="inv-kpi-count">0 posiciones</span>
+                    </div>
+                    <div class="kpi-card glass-panel">
+                        <h3>Valor de Mercado</h3>
+                        <p class="amount text-gold" id="inv-kpi-market">$0.00</p>
+                        <span class="trend" id="inv-kpi-broker">Broker: GBM+</span>
+                    </div>
+                    <div class="kpi-card glass-panel">
+                        <h3>Ganancia / Pérdida</h3>
+                        <p class="amount" id="inv-kpi-pnl">$0.00</p>
+                        <span class="trend" id="inv-kpi-pnl-pct">0.00%</span>
+                    </div>
+                    <div class="kpi-card glass-panel highlight-bg">
+                        <h3>Mayor Posición</h3>
+                        <p class="amount" id="inv-kpi-top" style="font-size: 20px;">-</p>
+                        <span class="trend" id="inv-kpi-top-pct">-</span>
+                    </div>
+                </div>
+
+                <!-- Controls: Filter Pills, Search, Add Investment -->
+                <div class="investments-toolbar glass-panel" style="margin-top: 24px; padding: 14px 20px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 16px;">
+                    <div class="pill-group" id="inv-filter-pills">
+                        <button class="pill-btn active" data-filter="all">Todos</button>
+                        <button class="pill-btn" data-filter="fibra">🏢 FIBRAs</button>
+                        <button class="pill-btn" data-filter="etf">📈 ETFs</button>
+                        <button class="pill-btn" data-filter="stock">📊 Acciones</button>
+                        <button class="pill-btn" data-filter="cetes">🏛️ CETES</button>
+                    </div>
+
+                    <div style="display: flex; gap: 12px; align-items: center; flex-wrap: wrap;">
+                        <input type="text" id="inv-search" placeholder="Buscar ticker o nombre..." class="glass-input" style="width: 220px;">
+                        <button id="btn-open-add-investment" class="btn btn-primary" style="padding: 9px 18px; font-size: 13px; display: flex; align-items: center; gap: 6px;">
+                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+                            + Registrar Compra
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Holdings Table -->
+                <div class="glass-panel table-container" style="margin-top: 16px;">
+                    <div class="table-responsive">
+                        <table id="investments-table">
+                            <thead>
+                                <tr>
+                                    <th>Instrumento</th>
+                                    <th>Tipo</th>
+                                    <th class="align-right">Títulos</th>
+                                    <th class="align-right">Costo Promedio</th>
+                                    <th class="align-right">Precio Actual (MXN)</th>
+                                    <th class="align-right">Total Invertido</th>
+                                    <th class="align-right">Valor Mercado</th>
+                                    <th class="align-right">Plusvalía (P&L)</th>
+                                    <th class="align-center">Acciones</th>
+                                </tr>
+                            </thead>
+                            <tbody id="investments-body">
+                                <tr><td colspan="9" class="text-center" style="padding: 32px; color: var(--text-muted)">Cargando portafolio de inversiones...</td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </section>
+
 
         </main>
     </div>
@@ -221,6 +295,133 @@
                 <div class="modal-footer">
                     <button type="button" id="btn-cancel" class="btn btn-ghost">Cancelar</button>
                     <button type="submit" class="btn btn-primary">Guardar Transacción</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Add Investment Modal -->
+    <div id="modal-investment" class="modal-overlay hidden">
+        <div class="modal-box glass-panel" style="max-width: 540px;">
+            <div class="modal-header">
+                <h3 id="inv-modal-title">📈 Registrar Compra de Inversión</h3>
+                <button id="inv-modal-close" class="modal-close-btn">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+                </button>
+            </div>
+            <form id="inv-form" class="tx-form">
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="inv-type">Tipo de Instrumento</label>
+                        <select id="inv-type" class="glass-input" required>
+                            <option value="fibra">🏢 FIBRA (Bienes Raíces)</option>
+                            <option value="etf">📈 ETF (Fondos Indexados)</option>
+                            <option value="stock">📊 Acción (Bolsa)</option>
+                            <option value="cetes">🏛️ CETES / Renta Fija</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="inv-ticker">Ticker / Clave de Pizarra</label>
+                        <input type="text" id="inv-ticker" class="glass-input" placeholder="Ej. FUNO11, VOO, NVDA" style="text-transform: uppercase;" required>
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label for="inv-name">Nombre de la Empresa o Fondo</label>
+                    <input type="text" id="inv-name" class="glass-input" placeholder="Ej. Fibra Uno, Vanguard S&P 500 ETF" required>
+                </div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="inv-date">Fecha de Compra</label>
+                        <input type="date" id="inv-date" class="glass-input" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="inv-broker">Broker</label>
+                        <input type="text" id="inv-broker" class="glass-input" value="GBM+" placeholder="GBM+, Bursanet..." required>
+                    </div>
+                </div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="inv-shares">Títulos Adquiridos</label>
+                        <input type="number" id="inv-shares" class="glass-input" placeholder="Ej. 100" step="any" min="0.0001" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="inv-price">Precio de Compra (MXN c/u)</label>
+                        <input type="number" id="inv-price" class="glass-input" placeholder="Ej. 28.50" step="0.0001" min="0" required>
+                    </div>
+                </div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="inv-current-price">Precio de Mercado Actual (MXN)</label>
+                        <input type="number" id="inv-current-price" class="glass-input" placeholder="Opcional (igual a compra si vacío)" step="0.0001" min="0">
+                    </div>
+                    <div class="form-group">
+                        <label for="inv-fee">Comisión Broker (MXN)</label>
+                        <input type="number" id="inv-fee" class="glass-input" value="0.00" step="0.01" min="0">
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label for="inv-notes">Tesis / Notas (opcional)</label>
+                    <input type="text" id="inv-notes" class="glass-input" placeholder="Ej. Compra para dividendos trimestrales...">
+                </div>
+                <div class="modal-footer">
+                    <button type="button" id="btn-cancel-inv" class="btn btn-ghost">Cancelar</button>
+                    <button type="submit" class="btn btn-primary">Guardar Compra</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Lots History Modal -->
+    <div id="modal-lots" class="modal-overlay hidden">
+        <div class="modal-box glass-panel" style="max-width: 680px;">
+            <div class="modal-header">
+                <h3 id="lots-modal-title">📋 Historial de Compras</h3>
+                <button id="lots-modal-close" class="modal-close-btn">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+                </button>
+            </div>
+            <div id="lots-modal-summary" style="margin-bottom: 16px; font-size: 14px; color: var(--text-secondary);"></div>
+            <div class="table-responsive" style="max-height: 320px; overflow-y: auto;">
+                <table style="width: 100%; border-collapse: collapse; font-size: 13px;">
+                    <thead>
+                        <tr style="border-bottom: 1px solid var(--border-color); color: var(--eagle-gold); text-align: left;">
+                            <th style="padding: 8px;">Fecha</th>
+                            <th style="padding: 8px; text-align: right;">Títulos</th>
+                            <th style="padding: 8px; text-align: right;">P. Compra</th>
+                            <th style="padding: 8px; text-align: right;">Total Lote</th>
+                            <th style="padding: 8px;">Broker</th>
+                            <th style="padding: 8px; text-align: center;">Acción</th>
+                        </tr>
+                    </thead>
+                    <tbody id="lots-table-body">
+                        <!-- Populated dynamically -->
+                    </tbody>
+                </table>
+            </div>
+            <div class="modal-footer" style="margin-top: 20px;">
+                <button type="button" id="btn-close-lots" class="btn btn-ghost">Cerrar</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Quick Price Update Modal -->
+    <div id="modal-price" class="modal-overlay hidden">
+        <div class="modal-box glass-panel" style="max-width: 400px;">
+            <div class="modal-header">
+                <h3 id="price-modal-title">Actualizar Precio</h3>
+                <button id="price-modal-close" class="modal-close-btn">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+                </button>
+            </div>
+            <form id="price-form" class="tx-form">
+                <input type="hidden" id="price-target-id">
+                <div class="form-group">
+                    <label id="price-target-label">Nuevo Precio de Mercado (MXN)</label>
+                    <input type="number" id="price-input-val" class="glass-input" step="0.0001" min="0.0001" required>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" id="price-cancel-btn" class="btn btn-ghost">Cancelar</button>
+                    <button type="submit" class="btn btn-primary">Actualizar</button>
                 </div>
             </form>
         </div>

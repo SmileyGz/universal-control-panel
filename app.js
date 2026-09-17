@@ -114,7 +114,12 @@ document.querySelectorAll('.nav-item').forEach(item => {
         document.querySelectorAll('.view-section').forEach(s => s.classList.remove('active'));
         document.getElementById(`view-${target}`).classList.add('active');
 
-        const titles = { dashboard: 'Overview', transactions: 'Mis Transacciones', portfolio: 'Business Assets & Portfolio' };
+        const titles = { 
+            dashboard: 'Overview', 
+            transactions: 'Mis Transacciones', 
+            portfolio: 'Business Assets & Portfolio',
+            investments: 'Portafolio de Inversiones (GBM+ / Bolsa)'
+        };
         document.getElementById('current-page-title').textContent = titles[target] || 'Overview';
 
         if (target === 'dashboard') {
@@ -385,6 +390,527 @@ const loadSavingsData = async () => {
 };
 
 // ============================================================
+// INVESTMENTS & STOCKS MODULE (GBM+ / FIBRAs / ETFs / CETES)
+// ============================================================
+let investmentsHoldings = [];
+let allInvestmentLots = [];
+let activeInvestmentFilter = 'all';
+
+const ASSET_TYPE_META = {
+    fibra: { label: 'FIBRA', badgeClass: 'fibra', icon: '🏢' },
+    etf:   { label: 'ETF',   badgeClass: 'etf',   icon: '📈' },
+    stock: { label: 'Acción',badgeClass: 'stock', icon: '📊' },
+    cetes: { label: 'CETES', badgeClass: 'cetes', icon: '🏛️' },
+    otro:  { label: 'Otro',  badgeClass: 'otro',  icon: '💰' }
+};
+
+const loadInvestmentsData = async () => {
+    try {
+        // 1. Fetch investment holdings from finance_portfolio
+        const { data: portfolioRows, error: pError } = await supabaseClient
+            .from('finance_portfolio')
+            .select('*')
+            .or('category.eq.Inversiones,asset_type.neq.null');
+
+        if (pError) throw pError;
+
+        // 2. Fetch lots from finance_investment_lots (graceful fallback if table not yet created)
+        let lots = [];
+        try {
+            const { data: lotsData, error: lError } = await supabaseClient
+                .from('finance_investment_lots')
+                .select('*')
+                .order('buy_date', { ascending: false });
+            if (!lError && lotsData) lots = lotsData;
+        } catch (lotErr) {
+            console.warn('finance_investment_lots table not yet provisioned in Supabase:', lotErr);
+        }
+
+        allInvestmentLots = lots;
+
+        // 3. Process holdings with aggregated lot calculations
+        investmentsHoldings = (portfolioRows || []).map(row => {
+            const rowLots = lots.filter(l => 
+                (l.portfolio_id && l.portfolio_id == row.id) || 
+                (l.ticker && row.ticker && l.ticker.trim().toUpperCase() === row.ticker.trim().toUpperCase())
+            );
+            
+            let totalShares = 0;
+            let totalInvested = 0;
+
+            if (rowLots.length > 0) {
+                rowLots.forEach(l => {
+                    const sh = parseFloat(l.shares || 0);
+                    const pr = parseFloat(l.purchase_price || 0);
+                    const fee = parseFloat(l.fee || 0);
+                    totalShares += sh;
+                    totalInvested += (sh * pr) + fee;
+                });
+            } else {
+                // If no lots recorded yet, fallback to row value and price
+                totalInvested = parseFloat(row.value || 0);
+                const pr = parseFloat(row.current_price || 0);
+                totalShares = pr > 0 ? (totalInvested / pr) : 1;
+            }
+
+            const avgCost = totalShares > 0 ? (totalInvested / totalShares) : 0;
+            const currentPrice = parseFloat(row.current_price || avgCost || 0);
+            const marketValue = totalShares * currentPrice;
+            const pnl = marketValue - totalInvested;
+            const pnlPct = totalInvested > 0 ? ((pnl / totalInvested) * 100) : 0;
+
+            return {
+                id: row.id,
+                ticker: (row.ticker || row.name.split(' ')[0]).toUpperCase(),
+                name: row.name,
+                asset_type: (row.asset_type || 'otro').toLowerCase(),
+                broker: rowLots[0]?.broker || 'GBM+',
+                totalShares,
+                avgCost,
+                currentPrice,
+                totalInvested,
+                marketValue,
+                pnl,
+                pnlPct,
+                lotsCount: rowLots.length,
+                lots: rowLots
+            };
+        });
+
+        renderInvestmentsTable();
+        updateInvestmentsKPIs();
+
+    } catch (err) {
+        console.error('Error loading investments:', err);
+        const tbody = document.getElementById('investments-body');
+        if (tbody) {
+            tbody.innerHTML = `
+                <tr>
+                    <td colspan="9" class="text-center" style="padding: 24px;">
+                        <p class="text-red">Aviso: No se pudieron cargar las inversiones bursátiles.</p>
+                        <p style="font-size: 12px; color: var(--text-muted); margin-top: 6px;">
+                            Recuerda ejecutar el archivo <code>supabase_investments_schema.sql</code> en tu Supabase SQL Editor.
+                        </p>
+                    </td>
+                </tr>`;
+        }
+    }
+};
+
+const updateInvestmentsKPIs = () => {
+    let grandInvested = 0;
+    let grandMarket = 0;
+    let topHolding = null;
+    let topValue = 0;
+
+    investmentsHoldings.forEach(h => {
+        grandInvested += h.totalInvested;
+        grandMarket += h.marketValue;
+        if (h.marketValue > topValue) {
+            topValue = h.marketValue;
+            topHolding = h;
+        }
+    });
+
+    const grandPnl = grandMarket - grandInvested;
+    const grandPnlPct = grandInvested > 0 ? ((grandPnl / grandInvested) * 100) : 0;
+
+    const investedEl = document.getElementById('inv-kpi-invested');
+    const marketEl = document.getElementById('inv-kpi-market');
+    const pnlEl = document.getElementById('inv-kpi-pnl');
+    const pnlPctEl = document.getElementById('inv-kpi-pnl-pct');
+    const countEl = document.getElementById('inv-kpi-count');
+    const topEl = document.getElementById('inv-kpi-top');
+    const topPctEl = document.getElementById('inv-kpi-top-pct');
+
+    if (investedEl) investedEl.textContent = formatCurrency(grandInvested);
+    if (marketEl) marketEl.textContent = formatCurrency(grandMarket);
+    if (countEl) countEl.textContent = `${investmentsHoldings.length} posiciones`;
+
+    if (pnlEl) {
+        pnlEl.textContent = `${grandPnl >= 0 ? '+' : ''}${formatCurrency(grandPnl)}`;
+        pnlEl.className = `amount ${grandPnl >= 0 ? 'text-green' : 'text-red'}`;
+    }
+    if (pnlPctEl) {
+        pnlPctEl.textContent = `${grandPnl >= 0 ? '↗ +' : '↘ '}${grandPnlPct.toFixed(2)}% Retorno`;
+        pnlPctEl.style.color = grandPnl >= 0 ? 'var(--mx-green-light)' : 'var(--mx-red-light)';
+    }
+
+    if (topEl) {
+        topEl.textContent = topHolding ? `${topHolding.ticker}` : '-';
+    }
+    if (topPctEl) {
+        topPctEl.textContent = topHolding ? `${formatCurrency(topHolding.marketValue)} (${((topHolding.marketValue / (grandMarket || 1)) * 100).toFixed(1)}%)` : '-';
+    }
+};
+
+const renderInvestmentsTable = () => {
+    const tbody = document.getElementById('investments-body');
+    if (!tbody) return;
+    tbody.innerHTML = '';
+
+    const query = (document.getElementById('inv-search')?.value || '').toLowerCase();
+    
+    const filtered = investmentsHoldings.filter(h => {
+        const matchesFilter = activeInvestmentFilter === 'all' || h.asset_type === activeInvestmentFilter;
+        const matchesQuery = h.ticker.toLowerCase().includes(query) || h.name.toLowerCase().includes(query);
+        return matchesFilter && matchesQuery;
+    });
+
+    if (filtered.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="9" class="text-center" style="padding: 32px; color: var(--text-muted);">No hay inversiones que coincidan con los filtros. Haz clic en "+ Registrar Compra".</td></tr>`;
+        return;
+    }
+
+    filtered.forEach(h => {
+        const meta = ASSET_TYPE_META[h.asset_type] || ASSET_TYPE_META['otro'];
+        const isPositive = h.pnl >= 0;
+        const pnlClass = isPositive ? 'pnl-positive' : 'pnl-negative';
+        const pnlSign = isPositive ? '+' : '';
+
+        const tr = document.createElement('tr');
+        tr.innerHTML = `
+            <td>
+                <strong>${h.ticker}</strong>
+                <br><span style="font-size: 12px; color: var(--text-muted);">${h.name}</span>
+            </td>
+            <td>
+                <span class="badge ${meta.badgeClass}">${meta.icon} ${meta.label}</span>
+            </td>
+            <td class="align-right">
+                ${Number.isInteger(h.totalShares) ? h.totalShares : h.totalShares.toFixed(4)}
+            </td>
+            <td class="align-right">
+                ${formatCurrency(h.avgCost)}
+            </td>
+            <td class="align-right">
+                <span class="price-tag-clickable btn-edit-price" data-id="${h.id}" data-ticker="${h.ticker}" data-price="${h.currentPrice}" title="Clic para actualizar precio">
+                    ${formatCurrency(h.currentPrice)} ✏️
+                </span>
+            </td>
+            <td class="align-right">
+                ${formatCurrency(h.totalInvested)}
+            </td>
+            <td class="align-right text-gold" style="font-weight: 600;">
+                ${formatCurrency(h.marketValue)}
+            </td>
+            <td class="align-right ${pnlClass}">
+                ${pnlSign}${formatCurrency(h.pnl)}
+                <br><span style="font-size: 11px;">(${pnlSign}${h.pnlPct.toFixed(2)}%)</span>
+            </td>
+            <td class="align-center">
+                <button class="action-btn-sm btn-view-lots" data-id="${h.id}" data-ticker="${h.ticker}" title="Ver compras registradas">
+                    📋 Lotes (${h.lotsCount})
+                </button>
+            </td>
+        `;
+        tbody.appendChild(tr);
+    });
+
+    // Attach row events
+    tbody.querySelectorAll('.btn-edit-price').forEach(btn => {
+        btn.addEventListener('click', (e) => {
+            const target = e.currentTarget;
+            openQuickPriceModal(target.dataset.id, target.dataset.ticker, target.dataset.price);
+        });
+    });
+
+    tbody.querySelectorAll('.btn-view-lots').forEach(btn => {
+        btn.addEventListener('click', (e) => {
+            const target = e.currentTarget;
+            openLotsModal(target.dataset.id, target.dataset.ticker);
+        });
+    });
+};
+
+// Filter pills
+document.querySelectorAll('#inv-filter-pills .pill-btn').forEach(btn => {
+    btn.addEventListener('click', (e) => {
+        document.querySelectorAll('#inv-filter-pills .pill-btn').forEach(b => b.classList.remove('active'));
+        e.currentTarget.classList.add('active');
+        activeInvestmentFilter = e.currentTarget.dataset.filter;
+        renderInvestmentsTable();
+    });
+});
+
+// Search input
+document.getElementById('inv-search')?.addEventListener('input', () => {
+    renderInvestmentsTable();
+});
+
+// ============================================================
+// MODALS: ADD INVESTMENT & LOTS
+// ============================================================
+const openAddInvestmentModal = () => {
+    const today = todayISO();
+    document.getElementById('inv-form').reset();
+    document.getElementById('inv-date').value = today;
+    document.getElementById('inv-broker').value = 'GBM+';
+    document.getElementById('inv-fee').value = '0.00';
+    document.getElementById('modal-investment').classList.remove('hidden');
+};
+
+const closeAddInvestmentModal = () => {
+    document.getElementById('modal-investment').classList.add('hidden');
+};
+
+document.getElementById('btn-open-add-investment')?.addEventListener('click', openAddInvestmentModal);
+document.getElementById('inv-modal-close')?.addEventListener('click', closeAddInvestmentModal);
+document.getElementById('btn-cancel-inv')?.addEventListener('click', closeAddInvestmentModal);
+document.getElementById('modal-investment')?.addEventListener('click', (e) => {
+    if (e.target === document.getElementById('modal-investment')) closeAddInvestmentModal();
+});
+
+// Form Submit: Add Investment
+document.getElementById('inv-form')?.addEventListener('submit', async (e) => {
+    e.preventDefault();
+
+    const type = document.getElementById('inv-type').value;
+    const ticker = document.getElementById('inv-ticker').value.trim().toUpperCase();
+    const name = document.getElementById('inv-name').value.trim();
+    const date = document.getElementById('inv-date').value;
+    const broker = document.getElementById('inv-broker').value.trim() || 'GBM+';
+    const shares = parseFloat(document.getElementById('inv-shares').value);
+    const price = parseFloat(document.getElementById('inv-price').value);
+    const currentPriceInput = document.getElementById('inv-current-price').value;
+    const currentPrice = currentPriceInput ? parseFloat(currentPriceInput) : price;
+    const fee = parseFloat(document.getElementById('inv-fee').value || 0);
+    const notes = document.getElementById('inv-notes').value.trim();
+
+    if (!ticker || !name || !date || isNaN(shares) || shares <= 0 || isNaN(price) || price < 0) {
+        showToast('Por favor completa todos los campos requeridos correctamente.', 'error');
+        return;
+    }
+
+    try {
+        // 1. Find or create holding in finance_portfolio
+        let holding = investmentsHoldings.find(h => h.ticker.toUpperCase() === ticker);
+        let holdingId = holding?.id;
+
+        const iconMap = { fibra: '🏢', etf: '📈', stock: '📊', cetes: '🏛️' };
+        const icon = iconMap[type] || '📈';
+
+        if (!holdingId) {
+            const newPortfolioRow = {
+                name: `${ticker} - ${name}`,
+                category: 'Inversiones',
+                ticker: ticker,
+                asset_type: type,
+                current_price: currentPrice,
+                value: shares * currentPrice,
+                notes: notes,
+                icon: icon
+            };
+
+            const { data: inserted, error: insertErr } = await supabaseClient
+                .from('finance_portfolio')
+                .insert([newPortfolioRow])
+                .select();
+
+            if (insertErr) throw insertErr;
+            if (inserted && inserted.length > 0) {
+                holdingId = inserted[0].id;
+            }
+        } else {
+            // Update holding current price and metadata
+            await supabaseClient
+                .from('finance_portfolio')
+                .update({
+                    ticker: ticker,
+                    asset_type: type,
+                    current_price: currentPrice
+                })
+                .eq('id', holdingId);
+        }
+
+        // 2. Insert lot into finance_investment_lots
+        const lotRow = {
+            portfolio_id: holdingId,
+            ticker: ticker,
+            transaction_type: 'buy',
+            buy_date: date,
+            shares: shares,
+            purchase_price: price,
+            fee: fee,
+            broker: broker,
+            notes: notes
+        };
+
+        const { error: lotErr } = await supabaseClient
+            .from('finance_investment_lots')
+            .insert([lotRow]);
+
+        if (lotErr) {
+            console.warn('Could not insert to finance_investment_lots (schema may need update):', lotErr);
+        }
+
+        // 3. Recalculate portfolio row value
+        if (holdingId) {
+            // Compute total shares across all lots for this holding
+            const rowLots = allInvestmentLots.filter(l => 
+                (l.portfolio_id && l.portfolio_id == holdingId) || 
+                (l.ticker && l.ticker.trim().toUpperCase() === ticker)
+            );
+            const totalShares = rowLots.reduce((sum, l) => sum + parseFloat(l.shares || 0), 0) + shares;
+            const updatedValue = totalShares * currentPrice;
+
+            await supabaseClient
+                .from('finance_portfolio')
+                .update({ value: updatedValue })
+                .eq('id', holdingId);
+        }
+
+        closeAddInvestmentModal();
+        showToast(`✅ Compra de ${shares} ${ticker} registrada con éxito!`, 'success');
+
+        await loadInvestmentsData();
+        await loadSavingsData();
+
+    } catch (err) {
+        console.error('Error saving investment:', err);
+        showToast('Error al guardar la inversión en Supabase.', 'error');
+    }
+});
+
+// ============================================================
+// QUICK PRICE UPDATE MODAL
+// ============================================================
+const openQuickPriceModal = (holdingId, ticker, currentPrice) => {
+    document.getElementById('price-target-id').value = holdingId;
+    document.getElementById('price-target-label').textContent = `Nuevo Precio de Mercado para ${ticker} (MXN)`;
+    document.getElementById('price-input-val').value = currentPrice || '';
+    document.getElementById('modal-price').classList.remove('hidden');
+    document.getElementById('price-input-val').focus();
+};
+
+const closeQuickPriceModal = () => {
+    document.getElementById('modal-price').classList.add('hidden');
+};
+
+document.getElementById('price-modal-close')?.addEventListener('click', closeQuickPriceModal);
+document.getElementById('price-cancel-btn')?.addEventListener('click', closeQuickPriceModal);
+document.getElementById('modal-price')?.addEventListener('click', (e) => {
+    if (e.target === document.getElementById('modal-price')) closeQuickPriceModal();
+});
+
+document.getElementById('price-form')?.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const holdingId = document.getElementById('price-target-id').value;
+    const newPrice = parseFloat(document.getElementById('price-input-val').value);
+
+    if (!holdingId || isNaN(newPrice) || newPrice <= 0) {
+        showToast('Ingresa un precio válido.', 'error');
+        return;
+    }
+
+    try {
+        const holding = investmentsHoldings.find(h => h.id == holdingId);
+        const newMarketValue = holding ? (holding.totalShares * newPrice) : 0;
+
+        const { error } = await supabaseClient
+            .from('finance_portfolio')
+            .update({
+                current_price: newPrice,
+                value: newMarketValue > 0 ? newMarketValue : undefined
+            })
+            .eq('id', holdingId);
+
+        if (error) throw error;
+
+        closeQuickPriceModal();
+        showToast(`✅ Precio actualizado a ${formatCurrency(newPrice)}!`, 'success');
+
+        await loadInvestmentsData();
+        await loadSavingsData();
+    } catch (err) {
+        console.error('Error updating price:', err);
+        showToast('Error al actualizar precio en Supabase.', 'error');
+    }
+});
+
+// ============================================================
+// LOTS HISTORY MODAL
+// ============================================================
+const openLotsModal = (holdingId, ticker) => {
+    const holding = investmentsHoldings.find(h => h.id == holdingId || h.ticker === ticker);
+    const lots = holding ? holding.lots : [];
+
+    document.getElementById('lots-modal-title').textContent = `📋 Lotes de Compra — ${ticker}`;
+    const summaryEl = document.getElementById('lots-modal-summary');
+    if (summaryEl) {
+        summaryEl.innerHTML = `
+            <strong>${holding?.name || ticker}</strong> &bull; Total acumulado: 
+            <span class="text-gold" style="font-weight: 600;">${holding?.totalShares || 0} títulos</span> | 
+            Costo Promedio: <span class="text-gold">${formatCurrency(holding?.avgCost || 0)}</span>
+        `;
+    }
+
+    const tbody = document.getElementById('lots-table-body');
+    tbody.innerHTML = '';
+
+    if (!lots || lots.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="6" class="text-center" style="padding: 24px; color: var(--text-muted);">Sin lotes individuales registrados aún. Puedes agregar uno en "+ Registrar Compra".</td></tr>`;
+    } else {
+        lots.forEach(lot => {
+            const sh = parseFloat(lot.shares || 0);
+            const pr = parseFloat(lot.purchase_price || 0);
+            const fee = parseFloat(lot.fee || 0);
+            const total = (sh * pr) + fee;
+
+            const tr = document.createElement('tr');
+            tr.style.borderBottom = '1px solid rgba(0, 104, 71, 0.15)';
+            tr.innerHTML = `
+                <td style="padding: 10px 8px;">${lot.buy_date}</td>
+                <td style="padding: 10px 8px; text-align: right; font-weight: 500;">${sh}</td>
+                <td style="padding: 10px 8px; text-align: right;">${formatCurrency(pr)}</td>
+                <td style="padding: 10px 8px; text-align: right; font-weight: 600;">${formatCurrency(total)}</td>
+                <td style="padding: 10px 8px;"><span class="badge" style="font-size: 11px;">${lot.broker || 'GBM+'}</span></td>
+                <td style="padding: 10px 8px; text-align: center;">
+                    <button class="delete-btn btn-delete-lot" data-lot-id="${lot.id}" title="Eliminar este lote">✕</button>
+                </td>
+            `;
+            tbody.appendChild(tr);
+        });
+
+        tbody.querySelectorAll('.btn-delete-lot').forEach(btn => {
+            btn.addEventListener('click', async (e) => {
+                const lotId = e.currentTarget.dataset.lotId;
+                if (!confirm('¿Deseas eliminar este lote de compra?')) return;
+
+                try {
+                    const { error } = await supabaseClient
+                        .from('finance_investment_lots')
+                        .delete()
+                        .eq('id', lotId);
+
+                    if (error) throw error;
+
+                    showToast('Lote eliminado.', 'success');
+                    closeLotsModal();
+                    await loadInvestmentsData();
+                    await loadSavingsData();
+                } catch (delErr) {
+                    console.error('Delete lot error:', delErr);
+                    showToast('Error al eliminar lote.', 'error');
+                }
+            });
+        });
+    }
+
+    document.getElementById('modal-lots').classList.remove('hidden');
+};
+
+const closeLotsModal = () => {
+    document.getElementById('modal-lots').classList.add('hidden');
+};
+
+document.getElementById('lots-modal-close')?.addEventListener('click', closeLotsModal);
+document.getElementById('btn-close-lots')?.addEventListener('click', closeLotsModal);
+document.getElementById('modal-lots')?.addEventListener('click', (e) => {
+    if (e.target === document.getElementById('modal-lots')) closeLotsModal();
+});
+
+// ============================================================
 // INIT
 // ============================================================
 const initApp = async () => {
@@ -417,6 +943,7 @@ const initApp = async () => {
     document.head.appendChild(style);
 
     await loadSavingsData();
+    await loadInvestmentsData();
     await loadYearlyData(currentYear);
 };
 
