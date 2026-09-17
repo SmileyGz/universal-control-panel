@@ -215,6 +215,45 @@ const renderCashflowChart = (data) => {
 // LOAD YEARLY DATA (SUPABASE)
 // ============================================================
 const loadYearlyData = async (year) => {
+    if (!currentUser) {
+        // Private Vault Lock: Protect transactions against public/unauthenticated view
+        const incomeEl = document.getElementById('kpi-income');
+        if (incomeEl) incomeEl.textContent = '$0.00';
+        const expEl = document.getElementById('kpi-expenses');
+        if (expEl) expEl.textContent = '$0.00';
+        const netEl = document.getElementById('kpi-net');
+        if (netEl) {
+            netEl.textContent = '$0.00';
+            netEl.className = 'amount text-gold';
+        }
+        const trendEl = document.getElementById('kpi-net-trend');
+        if (trendEl) trendEl.textContent = '🔒 Inicia sesión para ver tu balance';
+
+        const tbody = document.getElementById('transactions-body');
+        if (tbody) {
+            tbody.innerHTML = `
+                <tr>
+                    <td colspan="6" style="text-align: center; padding: 70px 20px;">
+                        <div style="font-size: 42px; margin-bottom: 14px;">🔒</div>
+                        <h4 style="color: var(--text-on-dark); font-size: 17px; margin-bottom: 6px;">Bóveda Financiera Protegida</h4>
+                        <p style="color: var(--text-secondary); font-size: 13px; max-width: 440px; margin: 0 auto 18px auto; line-height: 1.5;">
+                            Tus transacciones, ingresos y compras están cifradas y privadas. Inicia sesión con tu cuenta para desbloquear tu libro diario.
+                        </p>
+                        <button class="btn btn-primary" onclick="openAuthModal('login')">
+                            Iniciar Sesión
+                        </button>
+                    </td>
+                </tr>`;
+        }
+
+        const subtotalBar = document.getElementById('tx-subtotal-bar');
+        if (subtotalBar) subtotalBar.innerHTML = '<span style="color: var(--text-secondary); font-size: 13px;">🔒 Inicia sesión para ver movimientos y subtotales</span>';
+
+        const canvas = document.getElementById('cashflowChart');
+        if (canvas && cashflowChartInstance) cashflowChartInstance.destroy();
+        return;
+    }
+
     try {
         const startDate = `${year}-01-01`;
         const endDate = `${year}-12-31`;
@@ -594,6 +633,38 @@ const renderPortfolioChart = (labels, data) => {
 };
 
 const loadSavingsData = async () => {
+    if (!currentUser) {
+        const kpiSavings = document.getElementById('kpi-savings');
+        if (kpiSavings) kpiSavings.textContent = '$0.00';
+        const portfolioTotalKpi = document.getElementById('portfolio-kpi-total');
+        if (portfolioTotalKpi) portfolioTotalKpi.textContent = '$0.00';
+        const portfolioTotalLabel = document.getElementById('portfolio-total-label');
+        if (portfolioTotalLabel) portfolioTotalLabel.textContent = '🔒 Inicia sesión para ver tu patrimonio';
+
+        const passiveEl = document.getElementById('portfolio-kpi-passive');
+        if (passiveEl) passiveEl.textContent = '$0.00 / mes';
+        const loansEl = document.getElementById('portfolio-kpi-loans');
+        if (loansEl) loansEl.textContent = '$0.00';
+        const loansCountEl = document.getElementById('portfolio-kpi-loans-count');
+        if (loansCountEl) loansCountEl.textContent = '🔒 Protegido';
+        const rentalsEl = document.getElementById('portfolio-kpi-rentals');
+        if (rentalsEl) rentalsEl.textContent = '$0.00';
+        const capRateEl = document.getElementById('portfolio-kpi-caprate');
+        if (capRateEl) capRateEl.textContent = '🔒 Protegido';
+
+        const loansGrid = document.getElementById('loans-grid');
+        if (loansGrid) loansGrid.innerHTML = '<div class="portfolio-card glass-panel" style="grid-column: 1 / -1; text-align: center; padding: 24px;"><p style="color:var(--text-secondary); font-size: 13px;">🔒 Préstamos privados protegidos.</p></div>';
+
+        const rentalsGrid = document.getElementById('rentals-grid');
+        if (rentalsGrid) rentalsGrid.innerHTML = '<div class="portfolio-card glass-panel" style="grid-column: 1 / -1; text-align: center; padding: 24px;"><p style="color:var(--text-secondary); font-size: 13px;">🔒 Inmuebles y rentas protegidas.</p></div>';
+
+        const grid = document.getElementById('portfolio-grid');
+        if (grid) grid.innerHTML = '<div class="portfolio-card glass-panel" style="grid-column: 1 / -1; text-align: center; padding: 24px;"><p style="color:var(--text-secondary); font-size: 13px;">🔒 Negocios y activos protegidos. Inicia sesión para acceder.</p></div>';
+
+        if (portfolioChartInstance) portfolioChartInstance.destroy();
+        return;
+    }
+
     try {
         const { data: assets, error } = await supabaseClient.from('finance_portfolio').select('*').order('category');
         if (error) throw error;
@@ -626,6 +697,35 @@ const ASSET_TYPE_META = {
 };
 
 const loadInvestmentsData = async () => {
+    if (!currentUser) {
+        const invEl = document.getElementById('inv-kpi-invested');
+        if (invEl) invEl.textContent = '$0.00';
+        const countEl = document.getElementById('inv-kpi-count');
+        if (countEl) countEl.textContent = '🔒 Protegido';
+        const valEl = document.getElementById('inv-kpi-value');
+        if (valEl) valEl.textContent = '$0.00';
+        const gainEl = document.getElementById('inv-kpi-gain-loss');
+        if (gainEl) gainEl.textContent = '$0.00 (0.00%)';
+
+        const tbody = document.getElementById('inv-holdings-body');
+        if (tbody) {
+            tbody.innerHTML = `
+                <tr>
+                    <td colspan="7" style="text-align: center; padding: 70px 20px;">
+                        <div style="font-size: 40px; margin-bottom: 12px;">🔒</div>
+                        <h4 style="color: var(--text-on-dark); font-size: 17px; margin-bottom: 6px;">Portafolio Bursátil Privado</h4>
+                        <p style="color: var(--text-secondary); font-size: 13px; max-width: 440px; margin: 0 auto 18px auto; line-height: 1.5;">
+                            Tus posiciones de CETES, FIBRAs, ETFs y acciones están cifradas. Inicia sesión para ver tu rendimiento.
+                        </p>
+                        <button class="btn btn-primary" onclick="openAuthModal('login')">
+                            Iniciar Sesión
+                        </button>
+                    </td>
+                </tr>`;
+        }
+        return;
+    }
+
     try {
         // 1. Fetch investment holdings from finance_portfolio
         const { data: portfolioRows, error: pError } = await supabaseClient
@@ -2150,28 +2250,38 @@ document.getElementById('menu-btn-claim-data')?.addEventListener('click', async 
         showToast('Inicia sesión para reclamar tus datos históricos.', 'error');
         return;
     }
-    if (!confirm('¿Deseas asignar todos los registros previos de UCP a tu cuenta actual?')) return;
+    if (!confirm(`¿Deseas blindar y asignar todos tus registros de UCP a tu cuenta (${currentUser.email})?`)) return;
+
+    showToast('⏳ Vinculando datos históricos...', 'info');
 
     try {
         // Try the stored function first
-        const { error: rpcError } = await supabaseClient.rpc('claim_all_legacy_data', {
+        let claimedViaRpc = false;
+        const { data: rpcData, error: rpcError } = await supabaseClient.rpc('claim_all_legacy_data', {
             target_user_id: currentUser.id
         });
 
-        if (rpcError) {
-            // Direct update fallback
-            await supabaseClient.from('finance_transactions').update({ user_id: currentUser.id }).is('user_id', null);
+        if (!rpcError) {
+            claimedViaRpc = true;
+        } else {
+            console.warn('RPC claim_all_legacy_data fallback:', rpcError);
+            const resTx = await supabaseClient.from('finance_transactions').update({ user_id: currentUser.id }).is('user_id', null);
             await supabaseClient.from('finance_portfolio').update({ user_id: currentUser.id }).is('user_id', null);
             await supabaseClient.from('finance_investment_lots').update({ user_id: currentUser.id }).is('user_id', null);
             await supabaseClient.from('finance_loans').update({ user_id: currentUser.id }).is('user_id', null);
             await supabaseClient.from('finance_rentals').update({ user_id: currentUser.id }).is('user_id', null);
+
+            if (resTx.error && resTx.error.message && resTx.error.message.includes('user_id')) {
+                alert('⚠️ Importante: Falta ejecutar el script SQL en Supabase.\n\nTu base de datos aún no tiene la columna user_id ni Row Level Security activo.\n\nPor favor ve a tu Supabase Dashboard -> SQL Editor y corre el script supabase_multitenant_schema.sql.');
+                return;
+            }
         }
 
-        showToast('✅ ¡Datos históricos vinculados exitosamente a tu cuenta!', 'success');
+        showToast('🔒 ¡Tus datos históricos han sido blindados y asignados a tu cuenta!', 'success');
         await refreshAllData();
     } catch (err) {
         console.error('Claim data error:', err);
-        showToast('Error vinculando datos históricos.', 'error');
+        showToast('Error vinculando datos: ' + (err.message || 'Verifica la consola'), 'error');
     }
 });
 

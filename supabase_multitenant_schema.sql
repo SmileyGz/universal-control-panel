@@ -88,16 +88,17 @@ TO authenticated
 USING (auth.uid() = user_id)
 WITH CHECK (auth.uid() = user_id);
 
--- 6. POLÍTICA DE COMPATIBILIDAD CON DATOS LEGACY (PERMITE LECTURA SI user_id ES NULL)
+-- 6. POLÍTICA DE COMPATIBILIDAD CON DATOS LEGACY: SÓLO USUARIOS AUTENTICADOS PUEDEN LEERLOS
+-- Los visitantes anónimos (anon) quedan 100% bloqueados
 CREATE POLICY "Allow reading legacy unassigned records"
 ON finance_portfolio FOR SELECT
-TO authenticated, anon
-USING (user_id IS NULL);
+TO authenticated
+USING (user_id IS NULL OR auth.uid() = user_id);
 
 CREATE POLICY "Allow reading legacy unassigned transactions"
 ON finance_transactions FOR SELECT
-TO authenticated, anon
-USING (user_id IS NULL);
+TO authenticated
+USING (user_id IS NULL OR auth.uid() = user_id);
 
 -- 7. FUNCIÓN PARA ASIGNAR DATOS HISTÓRICOS A TU CUENTA DE ADMINISTRADOR
 -- Ejecuta esta función pasando tu UUID de auth.users tras registrarte:
