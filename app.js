@@ -1232,6 +1232,9 @@ const renderLoansGrid = () => {
         const repaid = Math.max(0, initial - current);
         const progressPct = initial > 0 ? Math.min(100, (repaid / initial) * 100) : 0;
         const isPaidOff = current <= 0 || loan.status === 'paid_off';
+        const annualRate = rate * 12;
+        const cetesSpread = annualRate - 10.75;
+        const cetesBadge = `<span class="cetes-spread-badge ${cetesSpread >= 0 ? 'positive' : 'warning'}" title="Tasa anualizada: ${annualRate.toFixed(1)}% vs CETES 28D (10.75%)">${cetesSpread >= 0 ? '▲ +' : '▼ '}${cetesSpread.toFixed(2)}% vs CETES</span>`;
 
         const card = document.createElement('div');
         card.className = 'portfolio-card glass-panel';
@@ -1256,7 +1259,10 @@ const renderLoansGrid = () => {
 
             <div class="loan-metrics-row">
                 <span>Pagado: ${progressPct.toFixed(1)}% (${formatCurrency(repaid)})</span>
-                <span>Tasa: <strong>${rate}% / mes</strong></span>
+                <div style="display: flex; gap: 6px; align-items: center;">
+                    <span>Tasa: <strong>${rate}%/m</strong> (${annualRate.toFixed(1)}%a)</span>
+                    ${cetesBadge}
+                </div>
             </div>
             <div class="loan-metrics-row" style="color: var(--mx-green-light); font-weight: 500;">
                 <span>Interés mensual: <strong>+${formatCurrency(monthlyInterest)}</strong></span>
@@ -1377,6 +1383,8 @@ const renderRentalsGrid = () => {
         const net = Math.max(0, rent - exp);
         const annualNet = net * 12;
         const capRate = val > 0 ? ((annualNet / val) * 100) : 0;
+        const capSpread = capRate - 10.75;
+        const capSpreadBadge = `<span class="cetes-spread-badge ${capSpread >= 0 ? 'positive' : 'warning'}" title="Cap Rate vs CETES 28D (10.75%)">${capSpread >= 0 ? '▲ +' : '▼ '}${capSpread.toFixed(2)}% vs CETES</span>`;
 
         const card = document.createElement('div');
         card.className = 'portfolio-card glass-panel';
@@ -1387,8 +1395,9 @@ const renderRentalsGrid = () => {
                     <h4 style="font-size: 15px; color: var(--text-on-dark);">🏠 ${rental.name}</h4>
                     <span style="font-size: 12px; color: var(--text-muted);">${rental.tenant_name ? `Inquilino: ${rental.tenant_name}` : 'Sin inquilino'}</span>
                 </div>
-                <div style="display: flex; gap: 6px; align-items: center;">
+                <div style="display: flex; gap: 6px; align-items: center; flex-wrap: wrap;">
                     <span class="cap-rate-badge" title="Tasa de Capitalización anual">Cap Rate: ${capRate.toFixed(1)}%</span>
+                    ${capSpreadBadge}
                     <button class="delete-btn btn-delete-rental" data-id="${rental.id}" title="Eliminar">✕</button>
                 </div>
             </div>
@@ -1511,12 +1520,32 @@ const updatePortfolioPassiveKPIs = () => {
 // ============================================================
 // MODALS: LOANS & RENTALS
 // ============================================================
-// Loan Modal
+// Loan Modal & Live Preview
+const updateLoanPreview = () => {
+    const balanceInput = document.getElementById('loan-balance')?.value;
+    const initialInput = document.getElementById('loan-initial')?.value;
+    const balance = parseFloat(balanceInput) || parseFloat(initialInput) || 0;
+    const rate = parseFloat(document.getElementById('loan-rate')?.value) || 0;
+    const monthlyInterest = balance * (rate / 100);
+    const annualRate = rate * 12;
+    const spread = annualRate - 10.75;
+
+    const monthlyEl = document.getElementById('loan-preview-monthly');
+    const spreadEl = document.getElementById('loan-preview-spread');
+
+    if (monthlyEl) monthlyEl.textContent = formatCurrency(monthlyInterest);
+    if (spreadEl) {
+        spreadEl.textContent = `${spread >= 0 ? '▲ +' : '▼ '}${spread.toFixed(2)}% vs CETES`;
+        spreadEl.className = `cetes-spread-badge ${spread >= 0 ? 'positive' : 'warning'}`;
+    }
+};
+
 const openAddLoanModal = () => {
     document.getElementById('loan-form').reset();
     document.getElementById('loan-date').value = todayISO();
     document.getElementById('loan-rate').value = '1.5';
     document.getElementById('loan-day').value = '15';
+    updateLoanPreview();
     document.getElementById('modal-loan').classList.remove('hidden');
 };
 
@@ -1529,6 +1558,11 @@ document.getElementById('loan-modal-close')?.addEventListener('click', closeAddL
 document.getElementById('btn-cancel-loan')?.addEventListener('click', closeAddLoanModal);
 document.getElementById('modal-loan')?.addEventListener('click', (e) => {
     if (e.target === document.getElementById('modal-loan')) closeAddLoanModal();
+});
+
+// Live preview listeners for loan form inputs
+['loan-initial', 'loan-balance', 'loan-rate'].forEach(id => {
+    document.getElementById(id)?.addEventListener('input', updateLoanPreview);
 });
 
 document.getElementById('loan-form')?.addEventListener('submit', async (e) => {
@@ -1670,11 +1704,31 @@ document.getElementById('loan-action-form')?.addEventListener('submit', async (e
     }
 });
 
-// Rental Modal
+// Rental Modal & Live Preview
+const updateRentalPreview = () => {
+    const val = parseFloat(document.getElementById('rental-value')?.value) || 0;
+    const rent = parseFloat(document.getElementById('rental-rent')?.value) || 0;
+    const exp = parseFloat(document.getElementById('rental-expenses')?.value) || 0;
+    const net = Math.max(0, rent - exp);
+    const annualNet = net * 12;
+    const capRate = val > 0 ? ((annualNet / val) * 100) : 0;
+    const spread = capRate - 10.75;
+
+    const capEl = document.getElementById('rental-preview-caprate');
+    const spreadEl = document.getElementById('rental-preview-spread');
+
+    if (capEl) capEl.textContent = `${capRate.toFixed(2)}%`;
+    if (spreadEl) {
+        spreadEl.textContent = `${spread >= 0 ? '▲ +' : '▼ '}${spread.toFixed(2)}% vs CETES`;
+        spreadEl.className = `cetes-spread-badge ${spread >= 0 ? 'positive' : 'warning'}`;
+    }
+};
+
 const openAddRentalModal = () => {
     document.getElementById('rental-form').reset();
     document.getElementById('rental-expenses').value = '0.00';
     document.getElementById('rental-day').value = '1';
+    updateRentalPreview();
     document.getElementById('modal-rental').classList.remove('hidden');
 };
 
@@ -1687,6 +1741,11 @@ document.getElementById('rental-modal-close')?.addEventListener('click', closeAd
 document.getElementById('btn-cancel-rental')?.addEventListener('click', closeAddRentalModal);
 document.getElementById('modal-rental')?.addEventListener('click', (e) => {
     if (e.target === document.getElementById('modal-rental')) closeAddRentalModal();
+});
+
+// Live preview listeners for rental form inputs
+['rental-value', 'rental-rent', 'rental-expenses'].forEach(id => {
+    document.getElementById(id)?.addEventListener('input', updateRentalPreview);
 });
 
 document.getElementById('rental-form')?.addEventListener('submit', async (e) => {
@@ -2113,6 +2172,30 @@ document.getElementById('menu-btn-claim-data')?.addEventListener('click', async 
     } catch (err) {
         console.error('Claim data error:', err);
         showToast('Error vinculando datos históricos.', 'error');
+    }
+});
+
+// ============================================================
+// KEYBOARD SHORTCUTS & ERGONOMICS
+// ============================================================
+document.addEventListener('keydown', (e) => {
+    // ESC closes active open modals
+    if (e.key === 'Escape') {
+        document.querySelectorAll('.modal-overlay:not(.hidden)').forEach(modal => {
+            modal.classList.add('hidden');
+        });
+        return;
+    }
+
+    // '/' shortcut to quickly focus search input (if not already typing in an input)
+    if (e.key === '/' && !['INPUT', 'TEXTAREA', 'SELECT'].includes(document.activeElement?.tagName)) {
+        e.preventDefault();
+        const activeNav = document.querySelector('.nav-item.active')?.dataset.view;
+        if (activeNav === 'investments') {
+            document.getElementById('inv-search')?.focus();
+        } else {
+            document.getElementById('tx-search')?.focus();
+        }
     }
 });
 
