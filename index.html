@@ -13,8 +13,8 @@
     <!-- Chart.js -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 
-    <!-- Custom CSS -->
-    <link rel="stylesheet" href="styles.css">
+    <!-- Custom CSS (v3.0 cache bust) -->
+    <link rel="stylesheet" href="styles.css?v=3.0">
 
     <!-- Supabase JS Client -->
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
@@ -56,12 +56,12 @@
         <!-- Main Content Area -->
         <main class="main-content">
             <!-- Investing.com Style Market Ticker Tape -->
-            <div class="market-ticker-tape">
-                <div class="ticker-badge">
+            <div class="market-ticker-tape" style="display: flex; align-items: center; overflow: hidden; white-space: nowrap; height: 34px;">
+                <div class="ticker-badge" style="display: inline-flex; align-items: center; gap: 6px; white-space: nowrap; flex-shrink: 0;">
                     <span class="ticker-pulse"></span> MERCADOS MX
                 </div>
-                <div class="ticker-viewport">
-                    <div class="ticker-track">
+                <div class="ticker-viewport" style="display: flex; flex: 1; overflow: hidden; position: relative;">
+                    <div class="ticker-track" style="display: inline-flex; align-items: center; gap: 28px; white-space: nowrap; width: max-content; flex-shrink: 0;">
                         <div class="ticker-item"><span class="ticker-sym">USD/MXN</span><span class="ticker-price">$18.35</span><span class="ticker-badge-chg up">-0.42% ▼</span></div>
                         <div class="ticker-item"><span class="ticker-sym">CETES 28D</span><span class="ticker-price gold">10.75%</span><span class="ticker-tag">Tasa Fija</span></div>
                         <div class="ticker-item"><span class="ticker-sym">S&P/BMV IPC</span><span class="ticker-price">52,890.15</span><span class="ticker-badge-chg up">+0.84% ▲</span></div>
@@ -83,9 +83,9 @@
             </div>
 
             <header class="topbar glass-panel">
-                <div class="page-title">
-                    <h2 id="current-page-title">Overview</h2>
-                    <span class="market-live-pill">
+                <div class="page-title" style="display: flex; align-items: center; gap: 12px; flex-wrap: wrap;">
+                    <h2 id="current-page-title" style="margin: 0;">Overview</h2>
+                    <span class="market-live-pill" style="display: inline-flex; align-items: center; gap: 6px;">
                         <span class="live-indicator"></span> BMV & BANXICO EN VIVO
                     </span>
                 </div>

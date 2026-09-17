@@ -299,6 +299,8 @@ nav {
     flex: 1;
     overflow: hidden;
     position: relative;
+    display: flex;
+    align-items: center;
     mask-image: linear-gradient(90deg, transparent 0%, black 2%, black 98%, transparent 100%);
     -webkit-mask-image: linear-gradient(90deg, transparent 0%, black 2%, black 98%, transparent 100%);
 }
@@ -308,6 +310,8 @@ nav {
     align-items: center;
     gap: 28px;
     white-space: nowrap;
+    width: max-content;
+    flex-shrink: 0;
     animation: tickerSlide 35s linear infinite;
 }
 .ticker-track:hover {
@@ -325,6 +329,8 @@ nav {
     gap: 7px;
     font-family: var(--font-mono);
     font-size: 11px;
+    flex-shrink: 0;
+    white-space: nowrap;
 }
 
 .ticker-sym {
