@@ -57,9 +57,10 @@ const openModal = () => {
 };
 const closeModal = () => document.getElementById('modal-overlay').classList.add('hidden');
 
-document.getElementById('fab-add').addEventListener('click', openModal);
-document.getElementById('modal-close').addEventListener('click', closeModal);
-document.getElementById('btn-cancel').addEventListener('click', closeModal);
+document.getElementById('fab-add')?.addEventListener('click', openModal);
+document.getElementById('btn-open-add-tx')?.addEventListener('click', openModal);
+document.getElementById('modal-close')?.addEventListener('click', closeModal);
+document.getElementById('btn-cancel')?.addEventListener('click', closeModal);
 document.getElementById('modal-overlay').addEventListener('click', (e) => {
     if (e.target === document.getElementById('modal-overlay')) closeModal();
 });
@@ -355,6 +356,7 @@ const loadYearlyData = async (year) => {
 // TRANSACTION FILTERS & DYNAMIC SUBTOTAL LEDGER
 // ============================================================
 let currentTransactions = [];
+let latestFilteredTransactions = [];
 let activeTxFilter = 'all';
 
 const applyTransactionsFilter = () => {
@@ -391,6 +393,8 @@ const applyTransactionsFilter = () => {
 
         return matchesFilter && matchesQuery;
     });
+
+    latestFilteredTransactions = filtered;
 
     // Update dynamic subtotal bar
     let filteredIncome = 0;
@@ -480,6 +484,59 @@ document.querySelectorAll('#tx-filter-pills .pill-btn').forEach(btn => {
 document.getElementById('tx-search')?.addEventListener('input', () => {
     applyTransactionsFilter();
 });
+
+// Export Transactions to CSV / Excel with UTF-8 BOM
+const exportTransactionsToCSV = () => {
+    const listToExport = (latestFilteredTransactions && latestFilteredTransactions.length > 0) 
+        ? latestFilteredTransactions 
+        : currentTransactions;
+
+    if (!listToExport || listToExport.length === 0) {
+        showToast('No hay transacciones para exportar en este filtro.', 'warning');
+        return;
+    }
+
+    const dataToExport = listToExport.map(tx => ({
+        'Fecha': tx.date || '',
+        'Concepto': tx.description || '',
+        'Tipo': tx.type === 'income' ? 'Ingreso' : (tx.type === 'expense' ? 'Gasto' : tx.type),
+        'Categoría': tx.category || 'General',
+        'Monto (MXN)': parseFloat(tx.amount || 0).toFixed(2),
+        'Notas': tx.notes || ''
+    }));
+
+    let csvContent = '';
+    if (window.Papa && typeof window.Papa.unparse === 'function') {
+        csvContent = window.Papa.unparse(dataToExport);
+    } else {
+        const headers = ['Fecha', 'Concepto', 'Tipo', 'Categoría', 'Monto (MXN)', 'Notas'];
+        const rows = dataToExport.map(d => [
+            `"${d.Fecha}"`,
+            `"${(d.Concepto || '').replace(/"/g, '""')}"`,
+            `"${d.Tipo}"`,
+            `"${(d.Categoría || '').replace(/"/g, '""')}"`,
+            d['Monto (MXN)'],
+            `"${(d.Notas || '').replace(/"/g, '""')}"`
+        ]);
+        csvContent = [headers.join(','), ...rows.map(r => r.join(','))].join('\n');
+    }
+
+    // Include UTF-8 BOM so Microsoft Excel renders Spanish accents flawlessly
+    const blob = new Blob(['\ufeff' + csvContent], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    const yearStr = currentYear || 'todas';
+    link.setAttribute('download', `transacciones_ucp_${yearStr}_${todayISO()}.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+
+    showToast(`📥 ${dataToExport.length} transacciones exportadas a CSV con éxito.`, 'success');
+};
+
+document.getElementById('btn-export-csv')?.addEventListener('click', exportTransactionsToCSV);
 
 // ============================================================
 // LOAD PORTFOLIO (SUPABASE)

@@ -200,7 +200,15 @@
                             <p style="font-size: 12px; color: var(--text-muted); margin-top: 2px;">Control detallado de ingresos, egresos y retornos de inversión</p>
                         </div>
                         <div style="display: flex; gap: 10px; align-items: center; flex-wrap: wrap;">
-                            <input type="text" id="tx-search" placeholder="Buscar concepto o categoría... [/]" class="glass-input" style="width: 260px;">
+                            <input type="text" id="tx-search" placeholder="Buscar concepto o categoría... [/]" class="glass-input" style="width: 220px;">
+                            <button id="btn-export-csv" class="btn btn-secondary" style="padding: 8px 14px; font-size: 12px; display: flex; align-items: center; gap: 6px;" title="Exportar movimientos visibles a archivo CSV / Excel">
+                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+                                <span>Exportar CSV</span>
+                            </button>
+                            <button id="btn-open-add-tx" class="btn btn-primary" style="padding: 8px 16px; font-size: 12px; display: flex; align-items: center; gap: 6px;">
+                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+                                <span>Nueva Transacción</span>
+                            </button>
                         </div>
                     </div>
 
@@ -493,10 +501,10 @@
                             <option value="Ventas">Ventas</option>
                             <option value="Freelance / Upwork">Freelance / Upwork</option>
                             <option value="Depósito / Transferencia">Depósito / Transferencia</option>
-                            <option value="Tía — Interés Recibido">🏦 Tía — Interés Recibido</option>
-                            <option value="Tía — Abono Capital">🏦 Tía — Abono Capital</option>
-                            <option value="CETES — Rendimiento">📈 CETES — Rendimiento</option>
-                            <option value="IVVPESO — Rendimiento">🌎 IVVPESO — Rendimiento</option>
+                            <option value="Préstamo — Interés Recibido">🏦 Préstamo — Interés Recibido</option>
+                            <option value="Préstamo — Abono Capital">🏦 Préstamo — Abono a Capital</option>
+                            <option value="CETES — Rendimiento">🏛️ CETES — Rendimiento</option>
+                            <option value="Bolsa / FIBRAs — Rendimiento">📈 Bolsa / FIBRAs — Rendimiento</option>
                             <option value="Otros">Otros</option>
                         </select>
                     </div>
@@ -1022,6 +1030,6 @@
 
     <!-- Custom Logic -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
-    <script src="app.js?v=20260917_v13"></script>
+    <script src="app.js?v=20260917_v14"></script>
 </body>
 </html>
