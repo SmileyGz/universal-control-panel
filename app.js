@@ -18,6 +18,11 @@ let cashflowChartInstance = null;
 let portfolioChartInstance = null;
 let currentYear = new Date().getFullYear().toString();
 let currentUser = null;
+let currentTransactions = [];
+let rawPortfolioAssets = [];
+let investmentsHoldings = [];
+let loansData = [];
+let rentalsData = [];
 
 const withUser = (row) => {
     if (currentUser && currentUser.id) {
@@ -615,6 +620,8 @@ const loadYearlyData = async (year) => {
 
         renderTransactions(transactions);
         renderCashflowChart(monthlyData);
+        updateFreedomRatio();
+        updateSidebarBadges();
 
     } catch (err) {
         console.error('Error loading yearly data', err);
@@ -676,7 +683,6 @@ const saveStoredTxData = (store) => {
 // ============================================================
 // TRANSACTION FILTERS & DYNAMIC SUBTOTAL LEDGER
 // ============================================================
-let currentTransactions = [];
 let latestFilteredTransactions = [];
 let activeTxFilter = 'all';
 
@@ -1404,7 +1410,6 @@ document.getElementById('btn-export-csv')?.addEventListener('click', exportTrans
 // ============================================================
 // LOAD PORTFOLIO (SUPABASE)
 // ============================================================
-let rawPortfolioAssets = [];
 
 const CATEGORY_META = {
     'Préstamos':  { icon: '🏦', color: '#38BDF8' },
@@ -1441,7 +1446,7 @@ const renderPortfolioFromAssets = (assets) => {
             grid.innerHTML = `
                 <div class="portfolio-card glass-panel" style="grid-column: 1 / -1; text-align: center; padding: 28px;">
                     <p style="color: var(--text-muted); font-size: 14px;">No tienes negocios comerciales ni cuentas de liquidez registradas por ahora.</p>
-                    <p style="color: var(--text-secondary); font-size: 12px; margin-top: 6px;">Haz clic en "Nuevo Negocio / Activo" para dar de alta tus tiendas online (Bazarito, etc.) o cuentas de liquidez.</p>
+                    <p style="color: var(--text-secondary); font-size: 12px; margin-top: 6px;">Haz clic en "Nuevo Negocio / Activo" para dar de alta tus tiendas online, sucursales de comercio o cuentas de liquidez.</p>
                 </div>`;
         } else {
             const grouped = {};
@@ -1738,124 +1743,156 @@ const renderAllocationRibbon = (data, grandTotal) => {
     });
 };
 
-const updateFreedomRatio = (assetData) => {
-    // 1. Monthly passive from Loans
-    let monthlyLoanInterest = 0;
-    if (loansData && loansData.length > 0) {
-        monthlyLoanInterest = loansData
-            .filter(l => l.status === 'active')
-            .reduce((sum, l) => {
-                const bal = parseFloat(l.current_balance || 0);
-                const rate = parseFloat(l.interest_rate_pct || 0);
-                return sum + (bal * (rate / 100));
+const updateFreedomRatio = (assetData = {}) => {
+    try {
+        // 1. Monthly passive from Loans
+        let monthlyLoanInterest = 0;
+        if (Array.isArray(loansData) && loansData.length > 0) {
+            monthlyLoanInterest = loansData
+                .filter(l => l && l.status === 'active')
+                .reduce((sum, l) => {
+                    const bal = parseFloat(l.current_balance || 0);
+                    const rate = parseFloat(l.interest_rate_pct || 0);
+                    return sum + (bal * (rate / 100));
+                }, 0);
+        }
+
+        // 2. Monthly passive from Rentals (net rent)
+        let monthlyNetRent = 0;
+        if (Array.isArray(rentalsData) && rentalsData.length > 0) {
+            monthlyNetRent = rentalsData.reduce((sum, r) => {
+                const rent = parseFloat(r.monthly_rent || 0);
+                const exp = parseFloat(r.monthly_expenses || 0);
+                return sum + Math.max(0, rent - exp);
             }, 0);
-    }
+        }
 
-    // 2. Monthly passive from Rentals (net rent)
-    let monthlyNetRent = 0;
-    if (rentalsData && rentalsData.length > 0) {
-        monthlyNetRent = rentalsData.reduce((sum, r) => {
-            const rent = parseFloat(r.monthly_rent || 0);
-            const exp = parseFloat(r.monthly_expenses || 0);
-            return sum + Math.max(0, rent - exp);
-        }, 0);
-    }
+        // 3. Monthly distributions from Market Securities
+        let cetesVal = assetData?.cetesTotal;
+        let fibraVal = assetData?.fibraTotal;
+        let etfVal = assetData?.etfTotal;
+        let stockVal = assetData?.stockTotal;
 
-    // 3. Monthly distributions from Market Securities
-    const cetesVal = assetData?.cetesTotal || 0;
-    const monthlyCetes = cetesVal * (0.1075 / 12);
+        // Fallback: derive directly from investmentsHoldings if assetData omitted
+        if (cetesVal === undefined && Array.isArray(investmentsHoldings)) {
+            cetesVal = 0; fibraVal = 0; etfVal = 0; stockVal = 0;
+            investmentsHoldings.forEach(h => {
+                const val = parseFloat(h.marketValue) || 0;
+                const type = (h.asset_type || '').toLowerCase();
+                if (type === 'cetes') cetesVal += val;
+                else if (type === 'fibra') fibraVal += val;
+                else if (type === 'etf') etfVal += val;
+                else if (type === 'stock') stockVal += val;
+            });
+        }
+        cetesVal = cetesVal || 0;
+        fibraVal = fibraVal || 0;
+        etfVal = etfVal || 0;
+        stockVal = stockVal || 0;
 
-    const fibraVal = assetData?.fibraTotal || 0;
-    const monthlyFibras = fibraVal * (0.085 / 12);
+        const cetesAnnualRate = (typeof getCetesRate === 'function' ? getCetesRate() : 6.25) / 100;
+        const monthlyCetes = cetesVal * (cetesAnnualRate / 12);
+        const monthlyFibras = fibraVal * (0.085 / 12);
+        const monthlyEtfs = (etfVal + stockVal) * (0.02 / 12);
 
-    const etfVal = (assetData?.etfTotal || 0) + (assetData?.stockTotal || 0);
-    const monthlyEtfs = etfVal * (0.02 / 12);
+        const monthlyMarket = monthlyFibras + monthlyEtfs;
+        const totalPassiveMonthly = monthlyLoanInterest + monthlyNetRent + monthlyCetes + monthlyMarket;
 
-    const monthlyMarket = monthlyFibras + monthlyEtfs;
-    const totalPassiveMonthly = monthlyLoanInterest + monthlyNetRent + monthlyCetes + monthlyMarket;
+        // 4. Monthly Living Expenses benchmark (from current year transactions or solopreneur baseline)
+        let monthlyExpensesBenchmark = 15000;
+        const txs = Array.isArray(currentTransactions) ? currentTransactions : [];
+        if (txs.length > 0) {
+            const yearExpenses = txs
+                .filter(t => t.type === 'expense' && (!currentYear || t.date?.startsWith(currentYear)))
+                .reduce((sum, t) => sum + (parseFloat(t.amount) || 0), 0);
+            
+            if (yearExpenses > 0) {
+                const currentMonth = new Date().getMonth() + 1;
+                monthlyExpensesBenchmark = Math.max(1000, yearExpenses / Math.max(1, currentMonth));
+            }
+        }
 
-    // 4. Monthly Living Expenses benchmark (from current year transactions or solopreneur baseline)
-    let monthlyExpensesBenchmark = 15000;
-    if (transactionsData && transactionsData.length > 0) {
-        const yearExpenses = transactionsData
-            .filter(t => t.type === 'expense' && (!currentYear || t.date?.startsWith(currentYear)))
-            .reduce((sum, t) => sum + (parseFloat(t.amount) || 0), 0);
+        const freedomRatio = monthlyExpensesBenchmark > 0 ? (totalPassiveMonthly / monthlyExpensesBenchmark) * 100 : 0;
+        const gapMonthly = Math.max(0, monthlyExpensesBenchmark - totalPassiveMonthly);
+
+        // Update DOM
+        const passiveMonthlyEl = document.getElementById('freedom-passive-monthly');
+        const pctLabelEl = document.getElementById('freedom-pct-label');
+        const gapLabelEl = document.getElementById('freedom-gap-label');
+        const progressBarEl = document.getElementById('freedom-progress-bar');
+        const statusBadgeEl = document.getElementById('freedom-status-badge');
+
+        if (passiveMonthlyEl) {
+            passiveMonthlyEl.innerHTML = `${formatCurrency(totalPassiveMonthly)} <span style="font-size: 12px; font-weight: normal; color: var(--text-secondary);">/ mes</span>`;
+        }
+        if (pctLabelEl) {
+            pctLabelEl.textContent = `${freedomRatio.toFixed(1)}% cubierto (Gastos est.: ${formatCurrency(monthlyExpensesBenchmark)}/m)`;
+        }
         
-        if (yearExpenses > 0) {
-            const currentMonth = new Date().getMonth() + 1;
-            monthlyExpensesBenchmark = Math.max(1000, yearExpenses / Math.max(1, currentMonth));
+        if (gapLabelEl) {
+            if (freedomRatio >= 100) {
+                gapLabelEl.textContent = `🎉 ¡100% de gastos cubiertos por flujo pasivo!`;
+                gapLabelEl.style.color = 'var(--azteca-gold)';
+            } else {
+                gapLabelEl.textContent = `Faltan ${formatCurrency(gapMonthly)}/mes para el 100% (Libertad Total)`;
+                gapLabelEl.style.color = 'var(--text-muted)';
+            }
         }
-    }
 
-    const freedomRatio = monthlyExpensesBenchmark > 0 ? (totalPassiveMonthly / monthlyExpensesBenchmark) * 100 : 0;
-    const gapMonthly = Math.max(0, monthlyExpensesBenchmark - totalPassiveMonthly);
-
-    // Update DOM
-    const passiveMonthlyEl = document.getElementById('freedom-passive-monthly');
-    const pctLabelEl = document.getElementById('freedom-pct-label');
-    const gapLabelEl = document.getElementById('freedom-gap-label');
-    const progressBarEl = document.getElementById('freedom-progress-bar');
-    const statusBadgeEl = document.getElementById('freedom-status-badge');
-
-    if (passiveMonthlyEl) {
-        passiveMonthlyEl.innerHTML = `${formatCurrency(totalPassiveMonthly)} <span style="font-size: 12px; font-weight: normal; color: var(--text-secondary);">/ mes</span>`;
-    }
-    if (pctLabelEl) {
-        pctLabelEl.textContent = `${freedomRatio.toFixed(1)}% cubierto (Gastos est.: ${formatCurrency(monthlyExpensesBenchmark)}/m)`;
-    }
-    
-    if (gapLabelEl) {
-        if (freedomRatio >= 100) {
-            gapLabelEl.textContent = `🎉 ¡100% de gastos cubiertos por flujo pasivo!`;
-            gapLabelEl.style.color = 'var(--azteca-gold)';
-        } else {
-            gapLabelEl.textContent = `Faltan ${formatCurrency(gapMonthly)}/mes para el 100% (Libertad Total)`;
-            gapLabelEl.style.color = 'var(--text-muted)';
+        if (progressBarEl) {
+            progressBarEl.style.width = `${Math.min(100, Math.max(0, freedomRatio))}%`;
         }
-    }
 
-    if (progressBarEl) {
-        progressBarEl.style.width = `${Math.min(100, Math.max(0, freedomRatio))}%`;
-    }
+        if (statusBadgeEl) {
+            statusBadgeEl.className = 'freedom-badge';
+            if (freedomRatio >= 100) {
+                statusBadgeEl.classList.add('complete');
+                statusBadgeEl.textContent = '🌟 Libertad Total';
+            } else if (freedomRatio >= 75) {
+                statusBadgeEl.classList.add('high');
+                statusBadgeEl.textContent = '🚀 Independencia';
+            } else if (freedomRatio >= 50) {
+                statusBadgeEl.classList.add('mid');
+                statusBadgeEl.textContent = '🛡️ Estabilidad';
+            } else if (freedomRatio >= 25) {
+                statusBadgeEl.classList.add('mid');
+                statusBadgeEl.textContent = '🌱 Seguridad Básica';
+            } else {
+                statusBadgeEl.classList.add('low');
+                statusBadgeEl.textContent = '⏳ Fase Inicial';
+            }
+        }
 
-    if (statusBadgeEl) {
-        statusBadgeEl.className = 'freedom-badge';
-        if (freedomRatio >= 100) {
-            statusBadgeEl.classList.add('complete');
-            statusBadgeEl.textContent = '🌟 Libertad Total';
-        } else if (freedomRatio >= 75) {
-            statusBadgeEl.classList.add('high');
-            statusBadgeEl.textContent = '🚀 Independencia';
-        } else if (freedomRatio >= 50) {
-            statusBadgeEl.classList.add('mid');
-            statusBadgeEl.textContent = '🛡️ Estabilidad';
-        } else if (freedomRatio >= 25) {
-            statusBadgeEl.classList.add('mid');
-            statusBadgeEl.textContent = '🌱 Seguridad Básica';
-        } else {
-            statusBadgeEl.classList.add('low');
+        // Update sub-sources breakdown
+        const bkLoans = document.getElementById('freedom-breakdown-loans');
+        const bkRentals = document.getElementById('freedom-breakdown-rentals');
+        const bkCetes = document.getElementById('freedom-breakdown-cetes');
+        const bkMarket = document.getElementById('freedom-breakdown-market');
+
+        if (bkLoans) bkLoans.textContent = `${formatCurrency(monthlyLoanInterest)}/m`;
+        if (bkRentals) bkRentals.textContent = `${formatCurrency(monthlyNetRent)}/m`;
+        if (bkCetes) bkCetes.textContent = `${formatCurrency(monthlyCetes)}/m`;
+        if (bkMarket) bkMarket.textContent = `${formatCurrency(monthlyMarket)}/m`;
+
+        // Sincronización con Micro-Widget Freedom Ratio en Sidebar
+        const sbPct = document.getElementById('sidebar-freedom-pct');
+        const sbBar = document.getElementById('sidebar-freedom-bar');
+        const sbVal = document.getElementById('sidebar-freedom-val');
+        if (sbPct) sbPct.textContent = `${freedomRatio.toFixed(1)}%`;
+        if (sbBar) sbBar.style.width = `${Math.min(100, Math.max(0, freedomRatio))}%`;
+        if (sbVal) sbVal.textContent = `${formatCurrency(totalPassiveMonthly)} / mes`;
+    } catch (err) {
+        console.error('Freedom ratio error:', err);
+        const statusBadgeEl = document.getElementById('freedom-status-badge');
+        if (statusBadgeEl) {
+            statusBadgeEl.className = 'freedom-badge low';
             statusBadgeEl.textContent = '⏳ Fase Inicial';
         }
+        const gapLabelEl = document.getElementById('freedom-gap-label');
+        if (gapLabelEl) {
+            gapLabelEl.textContent = 'Faltan $15,000.00/mes para el 100% (Libertad Total)';
+        }
     }
-
-    // Update sub-sources breakdown
-    const bkLoans = document.getElementById('freedom-breakdown-loans');
-    const bkRentals = document.getElementById('freedom-breakdown-rentals');
-    const bkCetes = document.getElementById('freedom-breakdown-cetes');
-    const bkMarket = document.getElementById('freedom-breakdown-market');
-
-    if (bkLoans) bkLoans.textContent = `${formatCurrency(monthlyLoanInterest)}/m`;
-    if (bkRentals) bkRentals.textContent = `${formatCurrency(monthlyNetRent)}/m`;
-    if (bkCetes) bkCetes.textContent = `${formatCurrency(monthlyCetes)}/m`;
-    if (bkMarket) bkMarket.textContent = `${formatCurrency(monthlyMarket)}/m`;
-
-    // Sincronización con Micro-Widget Freedom Ratio en Sidebar
-    const sbPct = document.getElementById('sidebar-freedom-pct');
-    const sbBar = document.getElementById('sidebar-freedom-bar');
-    const sbVal = document.getElementById('sidebar-freedom-val');
-    if (sbPct) sbPct.textContent = `${freedomRatio.toFixed(1)}%`;
-    if (sbBar) sbBar.style.width = `${Math.min(100, Math.max(0, freedomRatio))}%`;
-    if (sbVal) sbVal.textContent = `${formatCurrency(totalPassiveMonthly)} / mes`;
 };
 
 // ============================================================
@@ -1865,7 +1902,7 @@ const updateSidebarBadges = () => {
     // 1. Transactions badge
     const txBadge = document.getElementById('sidebar-badge-txs');
     if (txBadge) {
-        const count = currentTransactions ? currentTransactions.length : (transactionsData ? transactionsData.length : 0);
+        const count = Array.isArray(currentTransactions) ? currentTransactions.length : 0;
         txBadge.textContent = `${count} txs`;
     }
 
@@ -2029,10 +2066,10 @@ const DEFAULT_MARKET_QUOTES = [
     { symbol: 'TIIE28',   name: 'TIIE de Fondeo Banxico a 28D',      price: 6.50,    change_pct: 0.0,   change_abs: 0.0,   asset_type: 'cetes',    market: 'Banxico',           currency: 'MXN', source: 'Banxico SIE (SF43783)' }
 ];
 
-const getCetesRate = () => {
-    const quote = latestMarketQuotes['CETES28D'];
+function getCetesRate() {
+    const quote = (typeof latestMarketQuotes !== 'undefined' && latestMarketQuotes) ? latestMarketQuotes['CETES28D'] : null;
     return (quote && typeof quote.price === 'number' && quote.price > 0) ? quote.price : 6.25;
-};
+}
 
 const resolveMarketQuote = (rawTicker = '', name = '') => {
     const cleanSym = String(rawTicker || '').trim().toUpperCase().replace(/[^A-Z0-9]/g, '');
@@ -2255,7 +2292,6 @@ const syncHoldingsWithLiveQuotes = async () => {
 // ============================================================
 // INVESTMENTS & STOCKS MODULE (GBM+ / FIBRAs / ETFs / CETES)
 // ============================================================
-let investmentsHoldings = [];
 let allInvestmentLots = [];
 let activeInvestmentFilter = 'all';
 
@@ -3045,8 +3081,6 @@ document.getElementById('modal-lots')?.addEventListener('click', (e) => {
 // ============================================================
 // LOANS & RENTALS MODULE
 // ============================================================
-let loansData = [];
-let rentalsData = [];
 
 const loadLoansData = async (rawAssets = []) => {
     const grid = document.getElementById('loans-grid');
@@ -4263,6 +4297,7 @@ document.addEventListener('keydown', (e) => {
 // ============================================================
 const initApp = async () => {
     updateStatusIndicator();
+    updateFreedomRatio({});
     await initAuth();
 
     // Privacy Mode & Snowball initialization (FASE 3)
@@ -4311,6 +4346,7 @@ const initApp = async () => {
     await loadSavingsData();
     await loadInvestmentsData();
     await loadYearlyData(currentYear);
+    updateFreedomRatio();
     updateSidebarBadges();
 };
 
