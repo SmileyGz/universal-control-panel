@@ -187,6 +187,90 @@ const readFileAsDataURL = (file) => new Promise((resolve) => {
     reader.readAsDataURL(file);
 });
 
+// Client-side image compressor (reduces 6MB phone tickets to ~200KB)
+const compressImageFile = (file, maxWidth = 1400, quality = 0.82) => {
+    return new Promise((resolve) => {
+        if (!file || !file.type || !file.type.startsWith('image/') || file.type === 'image/svg+xml') {
+            return resolve(file);
+        }
+        const reader = new FileReader();
+        reader.onload = (e) => {
+            const img = new Image();
+            img.onload = () => {
+                let width = img.width;
+                let height = img.height;
+
+                if (width > maxWidth) {
+                    height = Math.round((height * maxWidth) / width);
+                    width = maxWidth;
+                }
+
+                const canvas = document.createElement('canvas');
+                canvas.width = width;
+                canvas.height = height;
+                const ctx = canvas.getContext('2d');
+                ctx.drawImage(img, 0, 0, width, height);
+
+                canvas.toBlob((blob) => {
+                    if (blob && blob.size < file.size) {
+                        const cleanName = file.name.replace(/\.[^.]+$/, '.jpg');
+                        const compressedFile = new File([blob], cleanName, {
+                            type: 'image/jpeg',
+                            lastModified: Date.now()
+                        });
+                        resolve(compressedFile);
+                    } else {
+                        resolve(file);
+                    }
+                }, 'image/jpeg', quality);
+            };
+            img.onerror = () => resolve(file);
+            img.src = e.target.result;
+        };
+        reader.onerror = () => resolve(file);
+        reader.readAsDataURL(file);
+    });
+};
+
+// Cloud uploader to Supabase Storage bucket 'expense-receipts'
+const uploadFileToSupabaseStorage = async (file, txId, year) => {
+    if (!supabaseClient) throw new Error('Supabase client not initialized');
+
+    let userId = 'public';
+    try {
+        const { data: authData } = await supabaseClient.auth.getUser();
+        if (authData?.user?.id) userId = authData.user.id;
+    } catch (e) {
+        // use 'public'
+    }
+
+    const cleanName = (file.name || 'comprobante')
+        .normalize('NFD')
+        .replace(/[\u0300-\u036f]/g, '')
+        .replace(/[^a-zA-Z0-9._-]/g, '_');
+
+    const fileYear = year || currentYear || new Date().getFullYear();
+    const storagePath = `${userId}/${fileYear}/${txId}_${Date.now()}_${cleanName}`;
+
+    const { error: uploadError } = await supabaseClient.storage
+        .from('expense-receipts')
+        .upload(storagePath, file, {
+            cacheControl: '31536000',
+            upsert: true
+        });
+
+    if (uploadError) throw uploadError;
+
+    const { data: { publicUrl } } = supabaseClient.storage
+        .from('expense-receipts')
+        .getPublicUrl(storagePath);
+
+    return {
+        path: storagePath,
+        url: publicUrl
+    };
+};
+
 document.getElementById('tx-form').addEventListener('submit', async (e) => {
     e.preventDefault();
     
@@ -205,26 +289,14 @@ document.getElementById('tx-form').addEventListener('submit', async (e) => {
     }
 
     // Process attached receipt file if present
-    let attachedFile = null;
+    let rawReceiptFile = null;
     const receiptInput = document.getElementById('f-receipt-file');
     if (receiptInput && receiptInput.files && receiptInput.files[0]) {
-        const file = receiptInput.files[0];
-        const dataUrl = await readFileAsDataURL(file);
-        const isImg = file.type.startsWith('image/');
-        const isPdf = file.type === 'application/pdf' || file.name.toLowerCase().endsWith('.pdf');
-        const isXml = file.type === 'text/xml' || file.type === 'application/xml' || file.name.toLowerCase().endsWith('.xml');
-        attachedFile = {
-            id: 'att_' + Date.now(),
-            name: file.name,
-            type: isImg ? 'image' : (isPdf ? 'pdf' : (isXml ? 'xml' : 'doc')),
-            size: (file.size / 1024).toFixed(0) + ' KB',
-            date: tx.date,
-            url: dataUrl
-        };
+        rawReceiptFile = await compressImageFile(receiptInput.files[0]);
     }
 
     try {
-        // En Supabase table, the columns are: date, description, amount, type, category, notes
+        // En Supabase table, insert transaction
         const { data: insertedRows, error } = await supabaseClient
             .from('finance_transactions')
             .insert([withUser(tx)])
@@ -232,16 +304,57 @@ document.getElementById('tx-form').addEventListener('submit', async (e) => {
 
         if (error) throw error;
 
-        // If an attachment was provided, store it in local store for this transaction
-        if (insertedRows && insertedRows.length > 0 && attachedFile) {
+        // If an attachment was provided, upload to Supabase Storage and update row
+        if (insertedRows && insertedRows.length > 0 && rawReceiptFile) {
             const newId = insertedRows[0].id;
-            const store = getStoredTxData();
-            store[newId] = {
-                attachments: [attachedFile],
-                is_deductible: false,
-                notes: tx.notes || ''
-            };
-            saveStoredTxData(store);
+            const isImg = rawReceiptFile.type.startsWith('image/');
+            const isPdf = rawReceiptFile.type === 'application/pdf' || rawReceiptFile.name.toLowerCase().endsWith('.pdf');
+            const isXml = rawReceiptFile.type === 'text/xml' || rawReceiptFile.type === 'application/xml' || rawReceiptFile.name.toLowerCase().endsWith('.xml');
+
+            try {
+                const uploadRes = await uploadFileToSupabaseStorage(rawReceiptFile, newId, tx.date?.split('-')[0]);
+                const attachedObj = {
+                    id: 'att_' + Date.now(),
+                    name: rawReceiptFile.name,
+                    type: isImg ? 'image' : (isPdf ? 'pdf' : (isXml ? 'xml' : 'doc')),
+                    size: (rawReceiptFile.size / 1024).toFixed(0) + ' KB',
+                    date: tx.date,
+                    url: uploadRes.url,
+                    path: uploadRes.path
+                };
+
+                // Update database row directly
+                await supabaseClient
+                    .from('finance_transactions')
+                    .update({ attachments: [attachedObj] })
+                    .eq('id', newId);
+
+                // Also update local store
+                const store = getStoredTxData();
+                store[newId] = {
+                    attachments: [attachedObj],
+                    is_deductible: false,
+                    notes: tx.notes || ''
+                };
+                saveStoredTxData(store);
+            } catch (storageErr) {
+                console.warn('Storage upload error, falling back to local store:', storageErr);
+                const dataUrl = await readFileAsDataURL(rawReceiptFile);
+                const store = getStoredTxData();
+                store[newId] = {
+                    attachments: [{
+                        id: 'att_' + Date.now(),
+                        name: rawReceiptFile.name,
+                        type: isImg ? 'image' : (isPdf ? 'pdf' : (isXml ? 'xml' : 'doc')),
+                        size: (rawReceiptFile.size / 1024).toFixed(0) + ' KB',
+                        date: tx.date,
+                        url: dataUrl
+                    }],
+                    is_deductible: false,
+                    notes: tx.notes || ''
+                };
+                saveStoredTxData(store);
+            }
         }
 
         closeModal();
@@ -778,15 +891,20 @@ const renderTransactions = (transactions) => {
 
     // Hydrate each transaction with attachments, is_deductible, and rich notes
     currentTransactions.forEach(tx => {
-        if (store[tx.id]) {
-            tx.attachments = store[tx.id].attachments || [];
-            tx.is_deductible = !!store[tx.id].is_deductible;
-            if (store[tx.id].notes !== undefined && store[tx.id].notes !== '') {
-                tx.notes = store[tx.id].notes;
-            }
-        } else {
-            tx.attachments = tx.attachments || [];
-            tx.is_deductible = !!tx.is_deductible;
+        const dbAttachments = Array.isArray(tx.attachments) ? tx.attachments : [];
+        const localData = store[tx.id] || {};
+
+        // Prioritize Supabase DB attachments if they exist, fallback to localStore
+        tx.attachments = (dbAttachments.length > 0)
+            ? dbAttachments
+            : (localData.attachments || []);
+
+        tx.is_deductible = (typeof tx.is_deductible === 'boolean')
+            ? tx.is_deductible
+            : !!localData.is_deductible;
+
+        if (localData.notes !== undefined && localData.notes !== '' && !tx.notes) {
+            tx.notes = localData.notes;
         }
     });
 
@@ -969,7 +1087,10 @@ const processUploadedFiles = async (fileList) => {
     if (!fileList || fileList.length === 0) return;
 
     for (let i = 0; i < fileList.length; i++) {
-        const file = fileList[i];
+        let file = fileList[i];
+        if (file.type.startsWith('image/')) {
+            file = await compressImageFile(file);
+        }
         const dataUrl = await readFileAsDataURL(file);
         const isImg = file.type.startsWith('image/');
         const isPdf = file.type === 'application/pdf' || file.name.toLowerCase().endsWith('.pdf');
@@ -981,12 +1102,14 @@ const processUploadedFiles = async (fileList) => {
             type: isImg ? 'image' : (isPdf ? 'pdf' : (isXml ? 'xml' : 'doc')),
             size: (file.size / 1024).toFixed(0) + ' KB',
             date: todayISO(),
-            url: dataUrl
+            url: dataUrl,
+            rawFile: file,
+            isPendingUpload: true
         });
     }
 
     renderReceiptHubAttachments();
-    showToast(`📎 ${fileList.length} archivo(s) agregado(s). Haz clic en 'Guardar' para confirmar.`, 'success');
+    showToast(`📎 ${fileList.length} archivo(s) listo(s). Haz clic en 'Guardar' para subir a la nube.`, 'success');
 };
 
 // Wire Dropzone events
@@ -1076,40 +1199,109 @@ document.querySelectorAll('.quick-tag-chip').forEach(chip => {
 });
 
 // Wire Save Changes Button in Receipt Hub
-document.getElementById('rh-btn-save')?.addEventListener('click', () => {
+document.getElementById('rh-btn-save')?.addEventListener('click', async () => {
     if (!activeReceiptTx) return;
+
+    const saveBtn = document.getElementById('rh-btn-save');
+    const originalText = saveBtn ? saveBtn.textContent : 'Guardar Comprobantes & Notas';
+    if (saveBtn) {
+        saveBtn.disabled = true;
+        saveBtn.textContent = '☁️ Subiendo a la nube...';
+    }
 
     const notesVal = document.getElementById('rh-notes')?.value.trim() || '';
     const isDeductible = !!document.getElementById('rh-deductible-toggle')?.checked;
 
+    // 1. Upload any pending files to Supabase Storage
+    let uploadFailNotice = false;
+
+    for (let i = 0; i < activeReceiptAttachments.length; i++) {
+        const att = activeReceiptAttachments[i];
+        if (att.isPendingUpload && att.rawFile) {
+            try {
+                const year = activeReceiptTx.date ? activeReceiptTx.date.split('-')[0] : currentYear;
+                const uploadRes = await uploadFileToSupabaseStorage(att.rawFile, activeReceiptTx.id, year);
+                att.url = uploadRes.url;
+                att.path = uploadRes.path;
+                delete att.rawFile;
+                delete att.isPendingUpload;
+            } catch (upErr) {
+                console.warn('Storage upload error for attachment:', att.name, upErr);
+                uploadFailNotice = true;
+                delete att.rawFile;
+                delete att.isPendingUpload;
+            }
+        }
+    }
+
+    // Clean attachments array for database JSON serialization
+    const sanitizedAttachments = activeReceiptAttachments.map(a => ({
+        id: a.id,
+        name: a.name,
+        type: a.type,
+        size: a.size,
+        date: a.date,
+        url: a.url,
+        path: a.path || ''
+    }));
+
     // Update in-memory active transaction
     activeReceiptTx.notes = notesVal;
     activeReceiptTx.is_deductible = isDeductible;
-    activeReceiptTx.attachments = activeReceiptAttachments;
+    activeReceiptTx.attachments = sanitizedAttachments;
 
-    // Persist to local store
+    // Persist to local store cache
     const store = getStoredTxData();
     store[activeReceiptTx.id] = {
-        attachments: activeReceiptAttachments,
+        attachments: sanitizedAttachments,
         is_deductible: isDeductible,
         notes: notesVal
     };
     saveStoredTxData(store);
 
-    // Also update remote Supabase notes if connected
+    // 2. Persist directly to Supabase PostgreSQL database
+    let dbUpdated = false;
     if (supabaseClient) {
-        supabaseClient
-            .from('finance_transactions')
-            .update({ notes: notesVal })
-            .eq('id', activeReceiptTx.id)
-            .then(({ error }) => {
-                if (error) console.warn('Remote notes sync notice:', error);
-            });
+        try {
+            const { error: dbError } = await supabaseClient
+                .from('finance_transactions')
+                .update({
+                    attachments: sanitizedAttachments,
+                    is_deductible: isDeductible,
+                    notes: notesVal
+                })
+                .eq('id', activeReceiptTx.id);
+
+            if (dbError) {
+                console.warn('Supabase DB update notice (attachments/is_deductible):', dbError);
+                // Fallback to updating notes only if columns don't exist yet
+                await supabaseClient
+                    .from('finance_transactions')
+                    .update({ notes: notesVal })
+                    .eq('id', activeReceiptTx.id);
+            } else {
+                dbUpdated = true;
+            }
+        } catch (dbErr) {
+            console.warn('Remote sync error:', dbErr);
+        }
+    }
+
+    if (saveBtn) {
+        saveBtn.disabled = false;
+        saveBtn.textContent = originalText;
     }
 
     closeReceiptHub();
     applyTransactionsFilter();
-    showToast('💾 Comprobantes y notas guardados correctamente.', 'success');
+
+    if (dbUpdated && !uploadFailNotice) {
+        showToast('☁️ Comprobantes y notas guardados en Supabase con éxito!', 'success');
+    } else if (uploadFailNotice) {
+        showToast('⚠️ Comprobantes guardados localmente. Recuerda ejecutar el script SQL en Supabase para activar el bucket en la nube.', 'warning');
+    } else {
+        showToast('💾 Comprobantes y notas guardados correctamente.', 'success');
+    }
 });
 
 // Close buttons for Receipt Hub
