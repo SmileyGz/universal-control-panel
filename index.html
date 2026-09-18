@@ -13,8 +13,8 @@
     <!-- Chart.js -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 
-    <!-- Custom CSS (v3.5 cache bust) -->
-    <link rel="stylesheet" href="styles.css?v=3.5">
+    <!-- Custom CSS (v4.0 cache bust - FASE 3) -->
+    <link rel="stylesheet" href="styles.css?v=4.0">
 
     <!-- Supabase JS Client -->
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
@@ -102,6 +102,12 @@
                         </select>
                     </div>
 
+                    <!-- Privacy Mode Toggle (FASE 3) -->
+                    <button id="btn-privacy-mode" class="btn btn-ghost btn-privacy-toggle" style="padding: 6px 12px; font-size: 12px; display: flex; align-items: center; gap: 6px; border: 1px solid rgba(255,255,255,0.12); border-radius: var(--radius-sm);" title="Modo Privacidad: Ocultar o desenfocar cifras sensibles en pantalla (Atajo: Tecla P)">
+                        <span id="privacy-icon">👁️</span>
+                        <span class="privacy-label" style="font-size: 11px; font-weight: 500;">Privacidad</span>
+                    </button>
+
                     <!-- Auth / User Profile Widget -->
                     <div id="auth-actions-container" style="position: relative;">
                         <!-- Unauthenticated State -->
@@ -168,6 +174,80 @@
                         </div>
                         <p class="amount" id="kpi-savings">$0.00</p>
                         <span class="trend" id="kpi-networth-sub">Consolidado en Portafolio</span>
+                    </div>
+                </div>
+
+                <!-- Snapshot de Distribución Patrimonial Continua (FASE 3) -->
+                <div class="glass-panel asset-allocation-panel" style="margin-bottom: 24px; padding: 16px 20px; border-radius: var(--radius-lg);">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; flex-wrap: wrap; gap: 8px;">
+                        <div style="display: flex; align-items: center; gap: 8px;">
+                            <span style="font-size: 16px;">📊</span>
+                            <h4 style="font-size: 14px; font-weight: 600; color: var(--text-on-dark); margin: 0;">Distribución Patrimonial Continua</h4>
+                        </div>
+                        <span id="allocation-total-disp" class="amount" style="font-size: 12px; color: var(--azteca-gold); font-family: var(--font-mono); font-weight: 600;">$0.00</span>
+                    </div>
+                    
+                    <div class="allocation-ribbon-track" id="allocation-ribbon-bar">
+                        <div class="ribbon-segment segment-empty" style="width: 100%;" title="Cargando distribución..."></div>
+                    </div>
+                    
+                    <div class="allocation-legend" id="allocation-legend-pills">
+                        <!-- Populated dynamically by app.js -->
+                    </div>
+                </div>
+
+                <!-- Freedom Ratio & Motor de Flujo Pasivo Consolidado (FASE 3) -->
+                <div class="glass-panel freedom-ratio-card" id="freedom-ratio-widget" style="margin-bottom: 24px; padding: 20px; border-radius: var(--radius-lg); border-left: 4px solid var(--azteca-green-vibrant); position: relative; overflow: hidden;">
+                    <div style="display: flex; justify-content: space-between; align-items: flex-start; flex-wrap: wrap; gap: 14px;">
+                        <div>
+                            <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 4px;">
+                                <span style="font-size: 20px;">🛡️</span>
+                                <h3 style="font-size: 17px; font-weight: 700; color: var(--text-on-dark); margin: 0;">Índice de Libertad Financiera (Freedom Ratio)</h3>
+                                <span class="freedom-badge" id="freedom-status-badge">Calculando...</span>
+                            </div>
+                            <p style="font-size: 12px; color: var(--text-secondary); margin: 0; max-width: 580px;">
+                                Porcentaje de tus gastos de vida cubiertos en automático por intereses, rentas y dividendos bursátiles.
+                            </p>
+                        </div>
+                        <div style="text-align: right;">
+                            <div style="font-size: 11px; text-transform: uppercase; letter-spacing: 0.6px; color: var(--text-muted); font-weight: 600;">Flujo Pasivo Consolidado</div>
+                            <div class="amount text-gold freedom-metric-val" id="freedom-passive-monthly" style="font-size: 22px; font-weight: 700; font-family: var(--font-mono);">$0.00 <span style="font-size: 12px; font-weight: normal; color: var(--text-secondary);">/ mes</span></div>
+                        </div>
+                    </div>
+
+                    <!-- Progress Track & Milestone Markers -->
+                    <div style="margin-top: 18px;">
+                        <div style="display: flex; justify-content: space-between; font-size: 12px; margin-bottom: 6px; font-family: var(--font-mono);">
+                            <span style="color: var(--azteca-green-vibrant); font-weight: 700;" id="freedom-pct-label">0.0% cubierto</span>
+                            <span style="color: var(--text-muted);" id="freedom-gap-label">Calculando brecha a la independencia...</span>
+                        </div>
+                        <div class="freedom-progress-track">
+                            <div class="freedom-progress-fill" id="freedom-progress-bar" style="width: 0%;"></div>
+                            <div class="freedom-milestone-pin" style="left: 25%;" title="25% - Seguridad Básica"><span>25%</span></div>
+                            <div class="freedom-milestone-pin" style="left: 50%;" title="50% - Estabilidad"><span>50%</span></div>
+                            <div class="freedom-milestone-pin" style="left: 75%;" title="75% - Independencia"><span>75%</span></div>
+                            <div class="freedom-milestone-pin" style="left: 100%;" title="100% - Libertad Total"><span>100%</span></div>
+                        </div>
+                    </div>
+
+                    <!-- Sub-sources Breakdown Grid -->
+                    <div class="freedom-breakdown-grid" style="margin-top: 18px; display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 12px;">
+                        <div class="freedom-mini-stat">
+                            <span class="mini-stat-label">🏦 Interés Préstamos</span>
+                            <strong class="mini-stat-val freedom-metric-val" id="freedom-breakdown-loans">$0.00/m</strong>
+                        </div>
+                        <div class="freedom-mini-stat">
+                            <span class="mini-stat-label">🏠 Rentas Netas</span>
+                            <strong class="mini-stat-val freedom-metric-val" id="freedom-breakdown-rentals">$0.00/m</strong>
+                        </div>
+                        <div class="freedom-mini-stat">
+                            <span class="mini-stat-label">🏛️ CETES 28D (Banxico)</span>
+                            <strong class="mini-stat-val freedom-metric-val" id="freedom-breakdown-cetes">$0.00/m</strong>
+                        </div>
+                        <div class="freedom-mini-stat">
+                            <span class="mini-stat-label">🏢 FIBRAs & ETFs (Div.)</span>
+                            <strong class="mini-stat-val freedom-metric-val" id="freedom-breakdown-market">$0.00/m</strong>
+                        </div>
                     </div>
                 </div>
 
@@ -409,8 +489,12 @@
                         <button class="pill-btn" data-filter="cetes">🏛️ CETES</button>
                     </div>
 
-                    <div style="display: flex; gap: 12px; align-items: center; flex-wrap: wrap;">
-                        <input type="text" id="inv-search" placeholder="Buscar ticker o nombre..." class="glass-input" style="width: 220px;">
+                    <div style="display: flex; gap: 10px; align-items: center; flex-wrap: wrap;">
+                        <input type="text" id="inv-search" placeholder="Buscar ticker o nombre..." class="glass-input" style="width: 200px;">
+                        <button id="btn-open-snowball" class="btn btn-secondary" style="padding: 9px 14px; font-size: 13px; display: flex; align-items: center; gap: 6px; border-color: rgba(255, 199, 44, 0.4); color: var(--azteca-gold);" title="Simulador de Interés Compuesto e Inflación Banxico">
+                            <span>❄️</span>
+                            <span>Bola de Nieve</span>
+                        </button>
                         <button id="btn-open-add-investment" class="btn btn-primary" style="padding: 9px 18px; font-size: 13px; display: flex; align-items: center; gap: 6px;">
                             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
                             Registrar Compra
@@ -432,11 +516,12 @@
                                     <th class="align-right">Total Invertido</th>
                                     <th class="align-right">Valor Mercado</th>
                                     <th class="align-right">Plusvalía (P&L)</th>
+                                    <th class="align-center" style="min-width: 90px;">Tendencia (7D)</th>
                                     <th class="align-center">Acciones</th>
                                 </tr>
                             </thead>
                             <tbody id="investments-body">
-                                <tr><td colspan="9" class="text-center" style="padding: 32px; color: var(--text-muted)">Cargando portafolio de inversiones...</td></tr>
+                                <tr><td colspan="10" class="text-center" style="padding: 32px; color: var(--text-muted)">Cargando portafolio de inversiones...</td></tr>
                             </tbody>
                         </table>
                     </div>
@@ -977,6 +1062,114 @@
         </div>
     </div>
 
+    <!-- Snowball Compound Interest Simulator Modal (FASE 3) -->
+    <div id="modal-snowball" class="modal-overlay hidden">
+        <div class="modal-box glass-panel snowball-modal-box" style="max-width: 680px;">
+            <div class="modal-header">
+                <div style="display: flex; align-items: center; gap: 10px;">
+                    <div style="font-size: 26px; line-height: 1;">❄️</div>
+                    <div>
+                        <h3 style="font-size: 19px; color: var(--text-on-dark); margin: 0;">Simulador "Bola de Nieve" Banxico</h3>
+                        <p style="color: var(--text-secondary); font-size: 12px; margin-top: 2px;">
+                            Proyección de Interés Compuesto MXN reinvertido vs Inacción e Inflación (UDIs 4.5%).
+                        </p>
+                    </div>
+                </div>
+                <button id="snowball-modal-close" class="modal-close-btn">&times;</button>
+            </div>
+
+            <div class="snowball-content" style="margin-top: 16px;">
+                <!-- Inputs -->
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 14px;">
+                    <div class="form-group">
+                        <label for="snowball-initial" style="display: flex; justify-content: space-between;">
+                            <span>Capital Inicial (MXN)</span>
+                            <span id="snowball-initial-val" style="color: var(--azteca-gold); font-family: var(--font-mono); font-weight: 600;">$50,000</span>
+                        </label>
+                        <input type="number" id="snowball-initial" class="glass-input" value="50000" step="1000" min="0">
+                    </div>
+                    <div class="form-group">
+                        <label for="snowball-monthly" style="display: flex; justify-content: space-between;">
+                            <span>Aportación Mensual (MXN)</span>
+                            <span id="snowball-monthly-val" style="color: var(--azteca-green-vibrant); font-family: var(--font-mono); font-weight: 600;">$5,000</span>
+                        </label>
+                        <input type="number" id="snowball-monthly" class="glass-input" value="5000" step="500" min="0">
+                    </div>
+                </div>
+
+                <div style="display: grid; grid-template-columns: 1.2fr 1fr; gap: 14px; margin-top: 6px;">
+                    <div class="form-group">
+                        <label for="snowball-rate" style="display: flex; justify-content: space-between;">
+                            <span>Tasa Anual de Rendimiento (%)</span>
+                            <span id="snowball-rate-val" style="color: var(--azteca-gold); font-family: var(--font-mono); font-weight: 600;">10.75% (CETES)</span>
+                        </label>
+                        <input type="range" id="snowball-rate" min="4" max="25" step="0.25" value="10.75" class="snowball-slider" style="width: 100%;">
+                        <div style="display: flex; justify-content: space-between; font-size: 10px; color: var(--text-muted); margin-top: 2px;">
+                            <span>4.5% (Inflación)</span>
+                            <span>10.75% (CETES 28D)</span>
+                            <span>15% (Préstamos)</span>
+                            <span>25%</span>
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label style="display: block; margin-bottom: 6px;">Plazo Temporal</label>
+                        <div class="pill-group" id="snowball-term-pills" style="margin-top: 2px;">
+                            <button class="pill-btn" data-years="1">1 Año</button>
+                            <button class="pill-btn" data-years="3">3 Años</button>
+                            <button class="pill-btn active" data-years="5">5 Años</button>
+                            <button class="pill-btn" data-years="10">10 Años</button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Simulation Output KPI Cards -->
+                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(135px, 1fr)); gap: 10px; margin-top: 18px;">
+                    <div class="kpi-card glass-panel gradient-border" style="padding: 12px 14px;">
+                        <span style="font-size: 11px; color: var(--text-secondary); text-transform: uppercase;">Patrimonio Proyectado</span>
+                        <p class="amount text-gold snowball-metric-val" id="snowball-out-total" style="font-size: 18px; margin: 4px 0;">$0.00</p>
+                        <span class="trend" id="snowball-out-multiplier" style="font-size: 10px;">x1.0 su valor</span>
+                    </div>
+                    <div class="kpi-card glass-panel" style="padding: 12px 14px;">
+                        <span style="font-size: 11px; color: var(--text-secondary); text-transform: uppercase;">Intereses Ganados (Bola)</span>
+                        <p class="amount text-green snowball-metric-val" id="snowball-out-interest" style="font-size: 18px; margin: 4px 0;">+$0.00</p>
+                        <span class="trend" id="snowball-out-interest-pct" style="color: var(--azteca-green-vibrant); font-size: 10px;">+0.0% generado</span>
+                    </div>
+                    <div class="kpi-card glass-panel" style="padding: 12px 14px;">
+                        <span style="font-size: 11px; color: var(--text-secondary); text-transform: uppercase;">Tu Capital Aportado</span>
+                        <p class="amount snowball-metric-val" id="snowball-out-principal" style="font-size: 18px; margin: 4px 0;">$0.00</p>
+                        <span class="trend" style="color: var(--text-muted); font-size: 10px;">Ahorro de tu bolsillo</span>
+                    </div>
+                    <div class="kpi-card glass-panel" style="padding: 12px 14px; border-left: 3px solid var(--mx-red);">
+                        <span style="font-size: 11px; color: var(--mx-red-light); text-transform: uppercase;">Pérdida por Inacción</span>
+                        <p class="amount text-red snowball-metric-val" id="snowball-out-inflation" style="font-size: 18px; margin: 4px 0;">-$0.00</p>
+                        <span class="trend" style="color: var(--mx-red); font-size: 10px;">Poder adquisitivo vs INPC</span>
+                    </div>
+                </div>
+
+                <!-- Visual Comparison Ratio Bar -->
+                <div style="margin-top: 16px; background: rgba(0,0,0,0.3); padding: 12px 16px; border-radius: 8px; border: 1px solid rgba(255,255,255,0.06);">
+                    <div style="display: flex; justify-content: space-between; font-size: 11px; color: var(--text-secondary); margin-bottom: 6px;">
+                        <span>Composición: Capital Propio vs Interés Compuesto</span>
+                        <span id="snowball-comp-ratio-text" style="color: var(--azteca-gold); font-family: var(--font-mono);">--</span>
+                    </div>
+                    <div class="snowball-ratio-track" style="height: 10px; background: rgba(255,255,255,0.08); border-radius: 5px; overflow: hidden; display: flex;">
+                        <div id="snowball-bar-principal" style="background: #38BDF8; width: 60%; transition: width 0.3s ease;" title="Tu capital"></div>
+                        <div id="snowball-bar-interest" style="background: var(--azteca-green-vibrant); width: 40%; transition: width 0.3s ease;" title="Interés compuesto"></div>
+                    </div>
+                    <div style="display: flex; gap: 14px; margin-top: 8px; font-size: 10px; color: var(--text-muted);">
+                        <span style="display: flex; align-items: center; gap: 5px;"><span style="width: 8px; height: 8px; border-radius: 50%; background: #38BDF8;"></span> Tu Aportación</span>
+                        <span style="display: flex; align-items: center; gap: 5px;"><span style="width: 8px; height: 8px; border-radius: 50%; background: var(--azteca-green-vibrant);"></span> Bola de Nieve (Interés Generado)</span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="modal-footer" style="margin-top: 18px; display: flex; justify-content: space-between; align-items: center;">
+                <span style="font-size: 11px; color: var(--text-muted);">*Cálculos basados en capitalización mensual compuesta y tasa libre de riesgo Banxico.</span>
+                <button type="button" class="btn btn-primary" id="btn-close-snowball-done">Entendido</button>
+            </div>
+        </div>
+    </div>
+
     <!-- Pricing / Subscription Modal -->
     <div id="modal-pricing" class="modal-overlay hidden">
         <div class="modal-box glass-panel" style="max-width: 650px;">
@@ -1030,6 +1223,6 @@
 
     <!-- Custom Logic -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
-    <script src="app.js?v=20260917_v14"></script>
+    <script src="app.js?v=20260918_v15"></script>
 </body>
 </html>

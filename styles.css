@@ -1551,6 +1551,278 @@ select.glass-input option {
     opacity: 0.9;
 }
 
+/* ============================================================
+   FASE 3: INSTITUTIONAL ENHANCEMENTS
+   ============================================================ */
+
+/* 1. MODO PRIVACIDAD (Atajo 'P' / Botón Header) */
+.btn-privacy-toggle {
+    transition: all 0.2s ease;
+}
+
+.btn-privacy-toggle.active {
+    background: rgba(255, 199, 44, 0.15) !important;
+    border-color: rgba(255, 199, 44, 0.45) !important;
+    color: var(--azteca-gold) !important;
+    box-shadow: 0 0 10px rgba(255, 199, 44, 0.2);
+}
+
+body.privacy-mode-active .amount,
+body.privacy-mode-active .p-card-amount,
+body.privacy-mode-active .loan-card-balance,
+body.privacy-mode-active .rental-net-callout strong,
+body.privacy-mode-active #investments-table td:nth-child(3),
+body.privacy-mode-active #investments-table td:nth-child(4),
+body.privacy-mode-active #investments-table td:nth-child(5) .price-tag-clickable,
+body.privacy-mode-active #investments-table td:nth-child(6),
+body.privacy-mode-active #investments-table td:nth-child(7),
+body.privacy-mode-active #investments-table td:nth-child(8) .pnl-pill,
+body.privacy-mode-active .tx-amount,
+body.privacy-mode-active .tx-balance,
+body.privacy-mode-active #kpi-rolling-balance-val,
+body.privacy-mode-active .freedom-metric-val,
+body.privacy-mode-active .snowball-metric-val,
+body.privacy-mode-active #allocation-total-disp,
+body.privacy-mode-active .ticker-price {
+    filter: blur(7px) !important;
+    user-select: none !important;
+    -webkit-user-select: none !important;
+    transition: filter 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* 2. CINTA CONTINUA DE DISTRIBUCIÓN PATRIMONIAL (STRIPE TREASURY STYLE) */
+.asset-allocation-panel {
+    background: rgba(15, 31, 24, 0.65);
+    border: 1px solid rgba(0, 168, 89, 0.2);
+}
+
+.allocation-ribbon-track {
+    display: flex;
+    height: 12px;
+    width: 100%;
+    border-radius: 6px;
+    overflow: hidden;
+    background: rgba(255, 255, 255, 0.06);
+    gap: 2px;
+    box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.5);
+}
+
+.ribbon-segment {
+    height: 100%;
+    transition: width 0.4s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.2s ease;
+    cursor: pointer;
+    position: relative;
+}
+
+.ribbon-segment:hover {
+    opacity: 0.85;
+    filter: brightness(1.2);
+}
+
+.ribbon-segment.segment-cetes { background: #FFC72C; }
+.ribbon-segment.segment-realestate { background: #00A859; }
+.ribbon-segment.segment-stocks { background: #38BDF8; }
+.ribbon-segment.segment-loans { background: #A855F7; }
+.ribbon-segment.segment-business { background: #2DD4BF; }
+.ribbon-segment.segment-liquid { background: #64748B; }
+.ribbon-segment.segment-empty { background: rgba(255, 255, 255, 0.08); }
+
+.allocation-legend {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-top: 12px;
+}
+
+.legend-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 11px;
+    color: var(--text-secondary);
+    padding: 4px 10px;
+    border-radius: 6px;
+    background: rgba(255, 255, 255, 0.03);
+    border: 1px solid rgba(255, 255, 255, 0.07);
+    font-family: var(--font-sans);
+    transition: background 0.2s ease;
+}
+
+.legend-chip:hover {
+    background: rgba(255, 255, 255, 0.08);
+}
+
+.legend-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    flex-shrink: 0;
+}
+
+/* 3. FREEDOM RATIO & FLUJO PASIVO CONSOLIDADO */
+.freedom-ratio-card {
+    background: radial-gradient(circle at top right, rgba(0, 168, 89, 0.12) 0%, rgba(15, 31, 24, 0.82) 75%);
+    border: 1px solid rgba(0, 168, 89, 0.28);
+}
+
+.freedom-badge {
+    font-size: 11px;
+    padding: 3px 10px;
+    border-radius: 12px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    font-family: var(--font-heading);
+}
+
+.freedom-badge.low {
+    background: rgba(255, 77, 77, 0.15);
+    color: var(--mx-red-light);
+    border: 1px solid rgba(255, 77, 77, 0.3);
+}
+
+.freedom-badge.mid {
+    background: rgba(255, 199, 44, 0.15);
+    color: var(--azteca-gold);
+    border: 1px solid rgba(255, 199, 44, 0.35);
+}
+
+.freedom-badge.high {
+    background: rgba(0, 168, 89, 0.15);
+    color: var(--azteca-green-vibrant);
+    border: 1px solid rgba(0, 168, 89, 0.35);
+}
+
+.freedom-badge.complete {
+    background: linear-gradient(135deg, #00843D, #FFC72C);
+    color: #09110E;
+    font-weight: 700;
+    box-shadow: 0 0 12px rgba(255, 199, 44, 0.4);
+}
+
+.freedom-progress-track {
+    position: relative;
+    height: 14px;
+    background: rgba(0, 0, 0, 0.4);
+    border-radius: 7px;
+    overflow: visible;
+    box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.6);
+    border: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.freedom-progress-fill {
+    height: 100%;
+    border-radius: 7px;
+    background: linear-gradient(90deg, #00843D 0%, #00A859 60%, #FFC72C 100%);
+    box-shadow: 0 0 12px var(--azteca-green-glow);
+    transition: width 0.6s cubic-bezier(0.4, 0, 0.2, 1);
+    max-width: 100%;
+}
+
+.freedom-milestone-pin {
+    position: absolute;
+    top: -16px;
+    transform: translateX(-50%);
+    font-size: 9px;
+    font-family: var(--font-mono);
+    color: var(--text-muted);
+    font-weight: 600;
+    pointer-events: none;
+}
+
+.freedom-mini-stat {
+    background: rgba(255, 255, 255, 0.03);
+    border: 1px solid rgba(255, 255, 255, 0.06);
+    border-radius: 8px;
+    padding: 10px 12px;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.mini-stat-label {
+    font-size: 11px;
+    color: var(--text-secondary);
+}
+
+.mini-stat-val {
+    font-size: 14px;
+    font-family: var(--font-mono);
+    font-weight: 700;
+    color: var(--text-on-dark);
+}
+
+/* 4. MICRO-SPARKLINES SVG & TASA REAL */
+.sparkline-svg {
+    display: inline-block;
+    vertical-align: middle;
+}
+
+.sparkline-svg path.spark-line {
+    fill: none;
+    stroke-width: 2;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+}
+
+.badge-real-yield {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    font-size: 9px;
+    font-family: var(--font-mono);
+    padding: 1px 6px;
+    border-radius: 4px;
+    font-weight: 600;
+    background: rgba(0, 168, 89, 0.12);
+    color: var(--azteca-green-vibrant);
+    border: 1px solid rgba(0, 168, 89, 0.25);
+    white-space: nowrap;
+}
+
+.badge-real-yield.warning {
+    background: rgba(255, 199, 44, 0.12);
+    color: var(--azteca-gold);
+    border-color: rgba(255, 199, 44, 0.28);
+}
+
+/* 5. SIMULADOR BOLA DE NIEVE */
+.snowball-slider {
+    -webkit-appearance: none;
+    appearance: none;
+    height: 6px;
+    border-radius: 3px;
+    background: rgba(255, 255, 255, 0.12);
+    outline: none;
+    cursor: pointer;
+}
+
+.snowball-slider::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    appearance: none;
+    width: 16px;
+    height: 16px;
+    border-radius: 50%;
+    background: var(--azteca-gold);
+    box-shadow: 0 0 8px rgba(255, 199, 44, 0.5);
+    cursor: pointer;
+    transition: transform 0.15s ease;
+}
+
+.snowball-slider::-webkit-slider-thumb:hover {
+    transform: scale(1.2);
+}
+
+.snowball-slider::-moz-range-thumb {
+    width: 16px;
+    height: 16px;
+    border-radius: 50%;
+    background: var(--azteca-gold);
+    border: none;
+    cursor: pointer;
+}
+
+
 
 
 

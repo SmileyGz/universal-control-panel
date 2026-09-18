@@ -794,8 +794,196 @@ const updateConsolidatedNetWorth = () => {
     if (macroLabels.length > 0) {
         renderPortfolioChart(macroLabels, macroData);
     }
+
+    // FASE 3: Sub-breakdown of market holdings for continuous ribbon & passive flow
+    let cetesTotal = 0;
+    let fibraTotal = 0;
+    let etfTotal = 0;
+    let stockTotal = 0;
+    (investmentsHoldings || []).forEach(h => {
+        const val = parseFloat(h.marketValue) || 0;
+        if (h.asset_type === 'cetes') cetesTotal += val;
+        else if (h.asset_type === 'fibra') fibraTotal += val;
+        else if (h.asset_type === 'etf') etfTotal += val;
+        else if (h.asset_type === 'stock') stockTotal += val;
+    });
+
+    renderAllocationRibbon({
+        cetesTotal,
+        fibraTotal,
+        etfTotal,
+        stockTotal,
+        rentalsTotal,
+        loansTotal,
+        businessTotal,
+        liquidTotal,
+        otrosTotal
+    }, grandNetWorth);
+
+    updateFreedomRatio({
+        cetesTotal,
+        fibraTotal,
+        etfTotal,
+        stockTotal
+    });
 };
 
+const renderAllocationRibbon = (data, grandTotal) => {
+    const bar = document.getElementById('allocation-ribbon-bar');
+    const legend = document.getElementById('allocation-legend-pills');
+    const totalDisp = document.getElementById('allocation-total-disp');
+    if (!bar || !legend) return;
+
+    if (totalDisp) {
+        totalDisp.textContent = formatCurrency(grandTotal);
+    }
+
+    if (grandTotal <= 0) {
+        bar.innerHTML = `<div class="ribbon-segment segment-empty" style="width: 100%;" title="Sin patrimonio registrado"></div>`;
+        legend.innerHTML = `<span style="font-size: 11px; color: var(--text-muted);">🔒 Inicia sesión para ver tu distribución patrimonial continua.</span>`;
+        return;
+    }
+
+    const categories = [
+        { key: 'cetes', name: '🏛️ CETES & Fija', val: data.cetesTotal || 0, colorClass: 'segment-cetes', hex: '#FFC72C' },
+        { key: 'realestate', name: '🏢 FIBRAs & Rentas', val: (data.rentalsTotal || 0) + (data.fibraTotal || 0), colorClass: 'segment-realestate', hex: '#00A859' },
+        { key: 'stocks', name: '📈 ETFs & Acciones', val: (data.etfTotal || 0) + (data.stockTotal || 0), colorClass: 'segment-stocks', hex: '#38BDF8' },
+        { key: 'loans', name: '🤝 Préstamos', val: data.loansTotal || 0, colorClass: 'segment-loans', hex: '#A855F7' },
+        { key: 'business', name: '🛒 Negocios & Liquidez', val: (data.businessTotal || 0) + (data.liquidTotal || 0) + (data.otrosTotal || 0), colorClass: 'segment-business', hex: '#2DD4BF' }
+    ].filter(c => c.val > 0);
+
+    bar.innerHTML = '';
+    legend.innerHTML = '';
+
+    categories.forEach(cat => {
+        const pct = (cat.val / grandTotal) * 100;
+        const segment = document.createElement('div');
+        segment.className = `ribbon-segment ${cat.colorClass}`;
+        segment.style.width = `${pct}%`;
+        segment.title = `${cat.name}: ${formatCurrency(cat.val)} (${pct.toFixed(1)}%)`;
+        bar.appendChild(segment);
+
+        const chip = document.createElement('div');
+        chip.className = 'legend-chip';
+        chip.innerHTML = `
+            <span class="legend-dot" style="background-color: ${cat.hex};"></span>
+            <span>${cat.name}: <strong>${pct.toFixed(1)}%</strong> <span class="amount" style="color: var(--text-muted); font-size: 10px;">(${formatCurrency(cat.val)})</span></span>
+        `;
+        legend.appendChild(chip);
+    });
+};
+
+const updateFreedomRatio = (assetData) => {
+    // 1. Monthly passive from Loans
+    let monthlyLoanInterest = 0;
+    if (loansData && loansData.length > 0) {
+        monthlyLoanInterest = loansData
+            .filter(l => l.status === 'active')
+            .reduce((sum, l) => {
+                const bal = parseFloat(l.current_balance || 0);
+                const rate = parseFloat(l.interest_rate_pct || 0);
+                return sum + (bal * (rate / 100));
+            }, 0);
+    }
+
+    // 2. Monthly passive from Rentals (net rent)
+    let monthlyNetRent = 0;
+    if (rentalsData && rentalsData.length > 0) {
+        monthlyNetRent = rentalsData.reduce((sum, r) => {
+            const rent = parseFloat(r.monthly_rent || 0);
+            const exp = parseFloat(r.monthly_expenses || 0);
+            return sum + Math.max(0, rent - exp);
+        }, 0);
+    }
+
+    // 3. Monthly distributions from Market Securities
+    const cetesVal = assetData?.cetesTotal || 0;
+    const monthlyCetes = cetesVal * (0.1075 / 12);
+
+    const fibraVal = assetData?.fibraTotal || 0;
+    const monthlyFibras = fibraVal * (0.085 / 12);
+
+    const etfVal = (assetData?.etfTotal || 0) + (assetData?.stockTotal || 0);
+    const monthlyEtfs = etfVal * (0.02 / 12);
+
+    const monthlyMarket = monthlyFibras + monthlyEtfs;
+    const totalPassiveMonthly = monthlyLoanInterest + monthlyNetRent + monthlyCetes + monthlyMarket;
+
+    // 4. Monthly Living Expenses benchmark (from current year transactions or solopreneur baseline)
+    let monthlyExpensesBenchmark = 15000;
+    if (transactionsData && transactionsData.length > 0) {
+        const yearExpenses = transactionsData
+            .filter(t => t.type === 'expense' && (!currentYear || t.date?.startsWith(currentYear)))
+            .reduce((sum, t) => sum + (parseFloat(t.amount) || 0), 0);
+        
+        if (yearExpenses > 0) {
+            const currentMonth = new Date().getMonth() + 1;
+            monthlyExpensesBenchmark = Math.max(1000, yearExpenses / Math.max(1, currentMonth));
+        }
+    }
+
+    const freedomRatio = monthlyExpensesBenchmark > 0 ? (totalPassiveMonthly / monthlyExpensesBenchmark) * 100 : 0;
+    const gapMonthly = Math.max(0, monthlyExpensesBenchmark - totalPassiveMonthly);
+
+    // Update DOM
+    const passiveMonthlyEl = document.getElementById('freedom-passive-monthly');
+    const pctLabelEl = document.getElementById('freedom-pct-label');
+    const gapLabelEl = document.getElementById('freedom-gap-label');
+    const progressBarEl = document.getElementById('freedom-progress-bar');
+    const statusBadgeEl = document.getElementById('freedom-status-badge');
+
+    if (passiveMonthlyEl) {
+        passiveMonthlyEl.innerHTML = `${formatCurrency(totalPassiveMonthly)} <span style="font-size: 12px; font-weight: normal; color: var(--text-secondary);">/ mes</span>`;
+    }
+    if (pctLabelEl) {
+        pctLabelEl.textContent = `${freedomRatio.toFixed(1)}% cubierto (Gastos est.: ${formatCurrency(monthlyExpensesBenchmark)}/m)`;
+    }
+    
+    if (gapLabelEl) {
+        if (freedomRatio >= 100) {
+            gapLabelEl.textContent = `🎉 ¡100% de gastos cubiertos por flujo pasivo!`;
+            gapLabelEl.style.color = 'var(--azteca-gold)';
+        } else {
+            gapLabelEl.textContent = `Faltan ${formatCurrency(gapMonthly)}/mes para el 100% (Libertad Total)`;
+            gapLabelEl.style.color = 'var(--text-muted)';
+        }
+    }
+
+    if (progressBarEl) {
+        progressBarEl.style.width = `${Math.min(100, Math.max(0, freedomRatio))}%`;
+    }
+
+    if (statusBadgeEl) {
+        statusBadgeEl.className = 'freedom-badge';
+        if (freedomRatio >= 100) {
+            statusBadgeEl.classList.add('complete');
+            statusBadgeEl.textContent = '🌟 Libertad Total';
+        } else if (freedomRatio >= 75) {
+            statusBadgeEl.classList.add('high');
+            statusBadgeEl.textContent = '🚀 Independencia';
+        } else if (freedomRatio >= 50) {
+            statusBadgeEl.classList.add('mid');
+            statusBadgeEl.textContent = '🛡️ Estabilidad';
+        } else if (freedomRatio >= 25) {
+            statusBadgeEl.classList.add('mid');
+            statusBadgeEl.textContent = '🌱 Seguridad Básica';
+        } else {
+            statusBadgeEl.classList.add('low');
+            statusBadgeEl.textContent = '⏳ Fase Inicial';
+        }
+    }
+
+    // Update sub-sources breakdown
+    const bkLoans = document.getElementById('freedom-breakdown-loans');
+    const bkRentals = document.getElementById('freedom-breakdown-rentals');
+    const bkCetes = document.getElementById('freedom-breakdown-cetes');
+    const bkMarket = document.getElementById('freedom-breakdown-market');
+
+    if (bkLoans) bkLoans.textContent = `${formatCurrency(monthlyLoanInterest)}/m`;
+    if (bkRentals) bkRentals.textContent = `${formatCurrency(monthlyNetRent)}/m`;
+    if (bkCetes) bkCetes.textContent = `${formatCurrency(monthlyCetes)}/m`;
+    if (bkMarket) bkMarket.textContent = `${formatCurrency(monthlyMarket)}/m`;
+};
 
 const renderPortfolioChart = (labels, data) => {
     const canvas = document.getElementById('portfolioChart');
@@ -887,6 +1075,9 @@ const loadSavingsData = async () => {
 
         const grid = document.getElementById('portfolio-grid');
         if (grid) grid.innerHTML = '<div class="portfolio-card glass-panel" style="grid-column: 1 / -1; text-align: center; padding: 24px;"><p style="color:var(--text-secondary); font-size: 13px;">🔒 Negocios y activos protegidos. Inicia sesión para acceder.</p></div>';
+
+        renderAllocationRibbon({}, 0);
+        updateFreedomRatio({});
 
         if (portfolioChartInstance) portfolioChartInstance.destroy();
         return;
@@ -1156,6 +1347,63 @@ const updateInvestmentsKPIs = () => {
     }
 };
 
+// FASE 3: Micro-Sparklines SVG Generator (Native, zero dependencies)
+const generateSparklineSVG = (pnlPct, isPositive, assetType) => {
+    const width = 74;
+    const height = 24;
+    const count = 7;
+    const points = [];
+    const basePnl = typeof pnlPct === 'number' ? pnlPct : 0;
+    
+    // Pseudo-random seeded micro-trend points leading to current performance
+    for (let i = 0; i < count; i++) {
+        const progress = i / (count - 1);
+        let val;
+        if (assetType === 'cetes') {
+            val = progress * 8 + (Math.sin(i * 1.5) * 0.4);
+        } else if (isPositive) {
+            const noise = Math.sin(i * 2.1) * 1.2;
+            val = (progress * Math.max(4, Math.abs(basePnl))) + noise;
+        } else {
+            const noise = Math.sin(i * 2.1) * 1.2;
+            val = -(progress * Math.max(4, Math.abs(basePnl))) + noise;
+        }
+        points.push(val);
+    }
+
+    const min = Math.min(...points);
+    const max = Math.max(...points);
+    const range = max - min || 1;
+    const padding = 3;
+
+    const coords = points.map((p, idx) => {
+        const x = padding + (idx / (count - 1)) * (width - padding * 2);
+        const y = (height - padding) - ((p - min) / range) * (height - padding * 2);
+        return { x: Math.round(x * 10) / 10, y: Math.round(y * 10) / 10 };
+    });
+
+    // Smooth bezier curve path
+    let linePath = `M ${coords[0].x} ${coords[0].y}`;
+    for (let i = 1; i < coords.length; i++) {
+        const prev = coords[i - 1];
+        const curr = coords[i];
+        const midX = (prev.x + curr.x) / 2;
+        linePath += ` Q ${prev.x} ${prev.y}, ${midX} ${(prev.y + curr.y) / 2} T ${curr.x} ${curr.y}`;
+    }
+
+    const strokeColor = assetType === 'cetes' ? '#FFC72C' : (isPositive ? '#00A859' : '#E53935');
+    const fillColor = assetType === 'cetes' ? 'rgba(255, 199, 44, 0.18)' : (isPositive ? 'rgba(0, 168, 89, 0.18)' : 'rgba(229, 57, 53, 0.18)');
+    const areaPath = `${linePath} L ${coords[coords.length - 1].x} ${height} L ${coords[0].x} ${height} Z`;
+
+    return `
+        <svg class="sparkline-svg" width="${width}" height="${height}" viewBox="0 0 ${width} ${height}" title="Tendencia estimada de mercado">
+            <path d="${areaPath}" fill="${fillColor}" />
+            <path class="spark-line" d="${linePath}" stroke="${strokeColor}" />
+            <circle cx="${coords[coords.length - 1].x}" cy="${coords[coords.length - 1].y}" r="2.5" fill="${strokeColor}" />
+        </svg>
+    `;
+};
+
 const renderInvestmentsTable = () => {
     const tbody = document.getElementById('investments-body');
     if (!tbody) return;
@@ -1172,7 +1420,7 @@ const renderInvestmentsTable = () => {
     if (filtered.length === 0) {
         tbody.innerHTML = `
             <tr>
-                <td colspan="9" class="text-center" style="padding: 44px 20px;">
+                <td colspan="10" class="text-center" style="padding: 44px 20px;">
                     <div style="font-size: 36px; margin-bottom: 8px;">📈</div>
                     <h4 style="color: var(--text-on-dark); font-size: 16px; margin-bottom: 6px;">Sin posiciones de inversión registradas</h4>
                     <p style="font-size: 13px; color: var(--text-secondary); max-width: 440px; margin: 0 auto 16px auto; line-height: 1.5;">
@@ -1194,6 +1442,19 @@ const renderInvestmentsTable = () => {
         const meterClass = isPositive ? 'gain' : 'loss';
         const marketLabel = h.asset_type === 'cetes' ? 'Banxico / Directo' : (h.asset_type === 'fibra' ? 'BMV' : 'SIC / BMV');
 
+        // Real Yield net of Banxico 4.5% annual inflation (UDIs / INPC)
+        let realYieldBadge = '';
+        if (h.asset_type === 'cetes') {
+            realYieldBadge = `<span class="badge-real-yield" title="Tasa libre de riesgo Banxico 10.75% anual menos 4.5% inflación (INPC)">R. Real: +6.25%</span>`;
+        } else if (h.asset_type === 'fibra') {
+            realYieldBadge = `<span class="badge-real-yield" title="Rendimiento por distribuciones BMV estimado ~8.5% menos 4.5% inflación">Yield Real: +4.00%</span>`;
+        } else if (Math.abs(h.pnlPct) > 0.01) {
+            const realGain = h.pnlPct - 4.5;
+            realYieldBadge = `<span class="badge-real-yield ${realGain >= 0 ? '' : 'warning'}" title="Retorno neto descontando 4.5% de inflación Banxico">R. Real: ${realGain >= 0 ? '+' : ''}${realGain.toFixed(1)}%</span>`;
+        }
+
+        const sparklineSVG = generateSparklineSVG(h.pnlPct, isPositive, h.asset_type);
+
         const tr = document.createElement('tr');
         tr.innerHTML = `
             <td>
@@ -1209,8 +1470,11 @@ const renderInvestmentsTable = () => {
                 </div>
             </td>
             <td>
-                <div style="display: flex; flex-direction: column; gap: 3px;">
-                    <span class="badge ${meta.badgeClass}" style="width: fit-content;">${meta.icon} ${meta.label}</span>
+                <div style="display: flex; flex-direction: column; gap: 4px;">
+                    <div style="display: flex; gap: 5px; align-items: center; flex-wrap: wrap;">
+                        <span class="badge ${meta.badgeClass}" style="width: fit-content;">${meta.icon} ${meta.label}</span>
+                        ${realYieldBadge}
+                    </div>
                     <span style="font-size: 10px; color: var(--text-muted); font-family: var(--font-mono);">${marketLabel}</span>
                 </div>
             </td>
@@ -1241,6 +1505,9 @@ const renderInvestmentsTable = () => {
                     <span>${arrow} ${pnlSign}${formatCurrency(h.pnl)}</span>
                     <span class="pnl-pct-tag">${pnlSign}${h.pnlPct.toFixed(2)}%</span>
                 </div>
+            </td>
+            <td class="align-center">
+                ${sparklineSVG}
             </td>
             <td class="align-center">
                 <button class="action-btn-sm btn-view-lots" data-id="${h.id}" data-ticker="${h.ticker}" title="Ver compras registradas">
@@ -2571,6 +2838,177 @@ document.getElementById('menu-btn-logout')?.addEventListener('click', async () =
 });
 
 // ============================================================
+// PRIVACY MODE LOGIC (FASE 3)
+// ============================================================
+let isPrivacyModeActive = localStorage.getItem('ucp_privacy_mode') === 'true';
+
+const applyPrivacyMode = (active) => {
+    isPrivacyModeActive = active;
+    localStorage.setItem('ucp_privacy_mode', active ? 'true' : 'false');
+    
+    if (active) {
+        document.body.classList.add('privacy-mode-active');
+    } else {
+        document.body.classList.remove('privacy-mode-active');
+    }
+
+    const btn = document.getElementById('btn-privacy-mode');
+    const icon = document.getElementById('privacy-icon');
+    const label = btn?.querySelector('.privacy-label');
+
+    if (btn) {
+        btn.classList.toggle('active', active);
+    }
+    if (icon) {
+        icon.textContent = active ? '🙈' : '👁️';
+    }
+    if (label) {
+        label.textContent = active ? 'Oculto' : 'Privacidad';
+    }
+};
+
+const togglePrivacyMode = () => {
+    applyPrivacyMode(!isPrivacyModeActive);
+    showToast(isPrivacyModeActive ? '🙈 Modo Privacidad activado (Cifras desenfocadas)' : '👁️ Modo Privacidad desactivado', 'info');
+};
+
+// ============================================================
+// SNOWBALL COMPOUND INTEREST SIMULATOR (FASE 3)
+// ============================================================
+let snowballSelectedYears = 5;
+
+const calculateSnowball = () => {
+    const initialInput = document.getElementById('snowball-initial');
+    const monthlyInput = document.getElementById('snowball-monthly');
+    const rateInput = document.getElementById('snowball-rate');
+
+    const P = Math.max(0, parseFloat(initialInput?.value) || 0);
+    const PMT = Math.max(0, parseFloat(monthlyInput?.value) || 0);
+    const annualRate = Math.max(0, parseFloat(rateInput?.value) || 10.75);
+    const t = snowballSelectedYears;
+
+    // Label indicators
+    const initialValEl = document.getElementById('snowball-initial-val');
+    const monthlyValEl = document.getElementById('snowball-monthly-val');
+    const rateValEl = document.getElementById('snowball-rate-val');
+
+    if (initialValEl) initialValEl.textContent = formatCurrency(P);
+    if (monthlyValEl) monthlyValEl.textContent = `${formatCurrency(PMT)} / mes`;
+    if (rateValEl) {
+        const isCetes = Math.abs(annualRate - 10.75) < 0.1;
+        rateValEl.textContent = `${annualRate.toFixed(2)}% ${isCetes ? '(CETES 28D)' : ''}`;
+    }
+
+    const r = annualRate / 100;
+    const n = 12; // monthly compounding
+    const totalMonths = t * 12;
+    const monthlyRate = r / n;
+
+    // Compound Interest Calculation
+    const futureValuePrincipal = P * Math.pow(1 + monthlyRate, totalMonths);
+    const futureValuePMT = monthlyRate > 0 ? (PMT * (Math.pow(1 + monthlyRate, totalMonths) - 1) / monthlyRate) : (PMT * totalMonths);
+    const finalTotal = futureValuePrincipal + futureValuePMT;
+
+    const totalContributed = P + (PMT * totalMonths);
+    const totalInterest = Math.max(0, finalTotal - totalContributed);
+    const interestPct = totalContributed > 0 ? (totalInterest / totalContributed) * 100 : 0;
+    const multiplier = totalContributed > 0 ? (finalTotal / totalContributed) : 1;
+
+    // Inflation Loss: purchasing power erosion at 4.5% annual inflation (UDIs / Banxico)
+    const inflationRate = 0.045;
+    const inflationFactor = Math.pow(1 + inflationRate, t);
+    const realValueIfCash = totalContributed / inflationFactor;
+    const inflationLoss = Math.max(0, totalContributed - realValueIfCash);
+
+    // Update Result Elements
+    const outTotal = document.getElementById('snowball-out-total');
+    const outMultiplier = document.getElementById('snowball-out-multiplier');
+    const outInterest = document.getElementById('snowball-out-interest');
+    const outInterestPct = document.getElementById('snowball-out-interest-pct');
+    const outPrincipal = document.getElementById('snowball-out-principal');
+    const outInflation = document.getElementById('snowball-out-inflation');
+
+    if (outTotal) outTotal.textContent = formatCurrency(finalTotal);
+    if (outMultiplier) outMultiplier.textContent = `x${multiplier.toFixed(2)} su aportación`;
+    if (outInterest) outInterest.textContent = `+${formatCurrency(totalInterest)}`;
+    if (outInterestPct) outInterestPct.textContent = `+${interestPct.toFixed(1)}% generado`;
+    if (outPrincipal) outPrincipal.textContent = formatCurrency(totalContributed);
+    if (outInflation) outInflation.textContent = `-${formatCurrency(inflationLoss)}`;
+
+    // Update Ratio Bar
+    const barPrincipal = document.getElementById('snowball-bar-principal');
+    const barInterest = document.getElementById('snowball-bar-interest');
+    const ratioText = document.getElementById('snowball-comp-ratio-text');
+
+    const totalBarSum = totalContributed + totalInterest;
+    if (totalBarSum > 0) {
+        const principalPct = (totalContributed / totalBarSum) * 100;
+        const interestBarPct = (totalInterest / totalBarSum) * 100;
+        if (barPrincipal) barPrincipal.style.width = `${principalPct}%`;
+        if (barInterest) barInterest.style.width = `${interestBarPct}%`;
+        if (ratioText) ratioText.textContent = `${principalPct.toFixed(0)}% Aportado / ${interestBarPct.toFixed(0)}% Interés`;
+    }
+};
+
+const openSnowballModal = () => {
+    const modal = document.getElementById('modal-snowball');
+    if (!modal) return;
+    
+    // Auto prefill capital if holdings exist
+    let currentCapital = 0;
+    if (investmentsHoldings && investmentsHoldings.length > 0) {
+        currentCapital = investmentsHoldings.reduce((s, h) => s + (parseFloat(h.marketValue) || 0), 0);
+    }
+    const initialInput = document.getElementById('snowball-initial');
+    if (initialInput && currentCapital > 0 && parseFloat(initialInput.value) === 50000) {
+        initialInput.value = Math.round(currentCapital);
+    }
+
+    calculateSnowball();
+    modal.classList.remove('hidden');
+};
+
+const closeSnowballModal = () => {
+    const modal = document.getElementById('modal-snowball');
+    if (modal) modal.classList.add('hidden');
+};
+
+const initSnowballSimulator = () => {
+    const btnOpen = document.getElementById('btn-open-snowball');
+    const btnClose = document.getElementById('snowball-modal-close');
+    const btnDone = document.getElementById('btn-close-snowball-done');
+    const modal = document.getElementById('modal-snowball');
+
+    if (btnOpen) btnOpen.addEventListener('click', openSnowballModal);
+    if (btnClose) btnClose.addEventListener('click', closeSnowballModal);
+    if (btnDone) btnDone.addEventListener('click', closeSnowballModal);
+
+    if (modal) {
+        modal.addEventListener('click', (e) => {
+            if (e.target === modal) closeSnowballModal();
+        });
+    }
+
+    const initialInput = document.getElementById('snowball-initial');
+    const monthlyInput = document.getElementById('snowball-monthly');
+    const rateInput = document.getElementById('snowball-rate');
+
+    if (initialInput) initialInput.addEventListener('input', calculateSnowball);
+    if (monthlyInput) monthlyInput.addEventListener('input', calculateSnowball);
+    if (rateInput) rateInput.addEventListener('input', calculateSnowball);
+
+    const pills = document.querySelectorAll('#snowball-term-pills .pill-btn');
+    pills.forEach(pill => {
+        pill.addEventListener('click', (e) => {
+            pills.forEach(p => p.classList.remove('active'));
+            e.currentTarget.classList.add('active');
+            snowballSelectedYears = parseInt(e.currentTarget.dataset.years, 10) || 5;
+            calculateSnowball();
+        });
+    });
+};
+
+// ============================================================
 // KEYBOARD SHORTCUTS & ERGONOMICS
 // ============================================================
 document.addEventListener('keydown', (e) => {
@@ -2579,6 +3017,13 @@ document.addEventListener('keydown', (e) => {
         document.querySelectorAll('.modal-overlay:not(.hidden)').forEach(modal => {
             modal.classList.add('hidden');
         });
+        return;
+    }
+
+    // 'p' or 'P' shortcut for Privacy Mode (if not typing in an input)
+    if ((e.key === 'p' || e.key === 'P') && !['INPUT', 'TEXTAREA', 'SELECT'].includes(document.activeElement?.tagName)) {
+        e.preventDefault();
+        togglePrivacyMode();
         return;
     }
 
@@ -2600,6 +3045,11 @@ document.addEventListener('keydown', (e) => {
 const initApp = async () => {
     updateStatusIndicator();
     await initAuth();
+
+    // Privacy Mode & Snowball initialization (FASE 3)
+    document.getElementById('btn-privacy-mode')?.addEventListener('click', togglePrivacyMode);
+    applyPrivacyMode(isPrivacyModeActive);
+    initSnowballSimulator();
 
     // Year selector
     const selector = document.getElementById('year-selector');
