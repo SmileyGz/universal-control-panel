@@ -1689,6 +1689,8 @@ const updateConsolidatedNetWorth = () => {
         etfTotal,
         stockTotal
     });
+
+    updateSidebarBadges();
 };
 
 const renderAllocationRibbon = (data, grandTotal) => {
@@ -1846,6 +1848,54 @@ const updateFreedomRatio = (assetData) => {
     if (bkRentals) bkRentals.textContent = `${formatCurrency(monthlyNetRent)}/m`;
     if (bkCetes) bkCetes.textContent = `${formatCurrency(monthlyCetes)}/m`;
     if (bkMarket) bkMarket.textContent = `${formatCurrency(monthlyMarket)}/m`;
+
+    // Sincronización con Micro-Widget Freedom Ratio en Sidebar
+    const sbPct = document.getElementById('sidebar-freedom-pct');
+    const sbBar = document.getElementById('sidebar-freedom-bar');
+    const sbVal = document.getElementById('sidebar-freedom-val');
+    if (sbPct) sbPct.textContent = `${freedomRatio.toFixed(1)}%`;
+    if (sbBar) sbBar.style.width = `${Math.min(100, Math.max(0, freedomRatio))}%`;
+    if (sbVal) sbVal.textContent = `${formatCurrency(totalPassiveMonthly)} / mes`;
+};
+
+// ============================================================
+// DYNAMIC SIDEBAR BADGES (FASE 3 INSTITUTIONAL)
+// ============================================================
+const updateSidebarBadges = () => {
+    // 1. Transactions badge
+    const txBadge = document.getElementById('sidebar-badge-txs');
+    if (txBadge) {
+        const count = currentTransactions ? currentTransactions.length : (transactionsData ? transactionsData.length : 0);
+        txBadge.textContent = `${count} txs`;
+    }
+
+    // 2. Portfolio assets badge
+    const portBadge = document.getElementById('sidebar-badge-portfolio');
+    if (portBadge) {
+        let totalAssets = 0;
+        if (loansData) totalAssets += loansData.filter(l => l.status === 'active').length;
+        if (rentalsData) totalAssets += rentalsData.length;
+        if (rawPortfolioAssets) {
+            const EXCLUDED_CATS = ['préstamos', 'prestamos', 'inversiones', 'inmuebles', 'rentas'];
+            const businessAssets = rawPortfolioAssets.filter(a => {
+                if (!a.name || a.name.trim() === '') return false;
+                const cat = (a.category || '').toLowerCase().trim();
+                const type = (a.asset_type || '').toLowerCase().trim();
+                if (EXCLUDED_CATS.includes(cat)) return false;
+                if (['fibra', 'etf', 'stock', 'cetes'].includes(type)) return false;
+                return true;
+            });
+            totalAssets += businessAssets.length;
+        }
+        portBadge.textContent = `${totalAssets} act`;
+    }
+
+    // 3. Investments holdings badge
+    const invBadge = document.getElementById('sidebar-badge-investments');
+    if (invBadge) {
+        const count = investmentsHoldings ? investmentsHoldings.length : 0;
+        invBadge.textContent = `${count} pos`;
+    }
 };
 
 const renderPortfolioChart = (labels, data) => {
@@ -3883,6 +3933,21 @@ document.addEventListener('keydown', (e) => {
         return;
     }
 
+    // Number shortcuts 1, 2, 3, 4 for instant terminal navigation
+    if (['1', '2', '3', '4'].includes(e.key) && !['INPUT', 'TEXTAREA', 'SELECT'].includes(document.activeElement?.tagName)) {
+        e.preventDefault();
+        const navMap = { '1': 'dashboard', '2': 'transactions', '3': 'portfolio', '4': 'investments' };
+        switchView(navMap[e.key]);
+        return;
+    }
+
+    // 's' or 'S' shortcut for Snowball Simulator
+    if ((e.key === 's' || e.key === 'S') && !['INPUT', 'TEXTAREA', 'SELECT'].includes(document.activeElement?.tagName)) {
+        e.preventDefault();
+        openSnowballModal();
+        return;
+    }
+
     // 'p' or 'P' shortcut for Privacy Mode (if not typing in an input)
     if ((e.key === 'p' || e.key === 'P') && !['INPUT', 'TEXTAREA', 'SELECT'].includes(document.activeElement?.tagName)) {
         e.preventDefault();
@@ -3914,6 +3979,17 @@ const initApp = async () => {
     applyPrivacyMode(isPrivacyModeActive);
     initSnowballSimulator();
 
+    // Sidebar Quick Launchers & Navigation Bridges
+    document.getElementById('sidebar-btn-snowball')?.addEventListener('click', (e) => {
+        e.preventDefault();
+        openSnowballModal();
+    });
+
+    document.getElementById('sidebar-freedom-mini-card')?.addEventListener('click', () => {
+        switchView('dashboard');
+        document.getElementById('freedom-ratio-widget')?.scrollIntoView({ behavior: 'smooth' });
+    });
+
     // Year selector
     const selector = document.getElementById('year-selector');
     selector.innerHTML = '';
@@ -3943,6 +4019,7 @@ const initApp = async () => {
     await loadSavingsData();
     await loadInvestmentsData();
     await loadYearlyData(currentYear);
+    updateSidebarBadges();
 };
 
 document.addEventListener('DOMContentLoaded', initApp);
