@@ -13,8 +13,8 @@
     <!-- Chart.js -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 
-    <!-- Custom CSS (v4.7 cache bust - FASE 3 Hybrid Smart Ticker) -->
-    <link rel="stylesheet" href="styles.css?v=4.7">
+    <!-- Custom CSS (v4.8 cache bust - FASE 3 Live Calibrated Quotes) -->
+    <link rel="stylesheet" href="styles.css?v=4.8">
 
     <!-- Supabase JS Client -->
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
@@ -78,11 +78,11 @@
                 </div>
                 <div class="macro-row">
                     <span class="macro-label">CETES 28D:</span>
-                    <span class="macro-val text-gold" id="sidebar-macro-cetes">10.75%</span>
+                    <span class="macro-val text-gold" id="sidebar-macro-cetes">6.25%</span>
                 </div>
                 <div class="macro-row">
                     <span class="macro-label">USD / MXN:</span>
-                    <span class="macro-val" id="sidebar-macro-usd">$18.35</span>
+                    <span class="macro-val" id="sidebar-macro-usd">$17.24</span>
                 </div>
                 <div class="macro-row">
                     <span class="macro-label">UDIs / Val:</span>
@@ -127,21 +127,21 @@
                 </div>
                 <div class="ticker-viewport" style="display: flex; flex: 1; overflow: hidden; position: relative;">
                     <div class="ticker-track" id="ticker-track" style="display: inline-flex; align-items: center; gap: 28px; white-space: nowrap; width: max-content; flex-shrink: 0;">
-                        <div class="ticker-item"><span class="ticker-sym">USD/MXN</span><span class="ticker-price">$18.35</span><span class="ticker-badge-chg up">-0.42% ▼</span></div>
-                        <div class="ticker-item"><span class="ticker-sym">CETES 28D</span><span class="ticker-price gold">10.75%</span><span class="ticker-tag">Tasa Fija</span></div>
-                        <div class="ticker-item"><span class="ticker-sym">S&P/BMV IPC</span><span class="ticker-price">52,890.15</span><span class="ticker-badge-chg up">+0.84% ▲</span></div>
-                        <div class="ticker-item"><span class="ticker-sym">FUNO 11</span><span class="ticker-price">$31.25</span><span class="ticker-badge-chg up">+1.15% ▲</span></div>
-                        <div class="ticker-item"><span class="ticker-sym">IVVPESO</span><span class="ticker-price">$108.40</span><span class="ticker-badge-chg up">+0.62% ▲</span></div>
-                        <div class="ticker-item"><span class="ticker-sym">FMTY 14</span><span class="ticker-price">$11.82</span><span class="ticker-badge-chg down">-0.25% ▼</span></div>
+                        <div class="ticker-item"><span class="ticker-sym">USD/MXN</span><span class="ticker-price">$17.24</span><span class="ticker-badge-chg down">-0.05% ▼</span></div>
+                        <div class="ticker-item"><span class="ticker-sym">CETES 28D</span><span class="ticker-price gold">6.25%</span><span class="ticker-tag">Tasa Fija</span></div>
+                        <div class="ticker-item"><span class="ticker-sym">S&P/BMV IPC</span><span class="ticker-price">63,510.00</span><span class="ticker-badge-chg down">-0.65% ▼</span></div>
+                        <div class="ticker-item"><span class="ticker-sym">FUNO 11</span><span class="ticker-price">$29.15</span><span class="ticker-badge-chg down">-2.87% ▼</span></div>
+                        <div class="ticker-item"><span class="ticker-sym">IVVPESO</span><span class="ticker-price">$154.98</span><span class="ticker-badge-chg up">+0.81% ▲</span></div>
+                        <div class="ticker-item"><span class="ticker-sym">FMTY 14</span><span class="ticker-price">$14.09</span><span class="ticker-badge-chg down">-1.47% ▼</span></div>
                         <div class="ticker-item"><span class="ticker-sym">UDIS</span><span class="ticker-price gold">8.1924</span><span class="ticker-tag">Inflación</span></div>
 
                         <!-- Continuous loop items -->
-                        <div class="ticker-item"><span class="ticker-sym">USD/MXN</span><span class="ticker-price">$18.35</span><span class="ticker-badge-chg up">-0.42% ▼</span></div>
-                        <div class="ticker-item"><span class="ticker-sym">CETES 28D</span><span class="ticker-price gold">10.75%</span><span class="ticker-tag">Tasa Fija</span></div>
-                        <div class="ticker-item"><span class="ticker-sym">S&P/BMV IPC</span><span class="ticker-price">52,890.15</span><span class="ticker-badge-chg up">+0.84% ▲</span></div>
-                        <div class="ticker-item"><span class="ticker-sym">FUNO 11</span><span class="ticker-price">$31.25</span><span class="ticker-badge-chg up">+1.15% ▲</span></div>
-                        <div class="ticker-item"><span class="ticker-sym">IVVPESO</span><span class="ticker-price">$108.40</span><span class="ticker-badge-chg up">+0.62% ▲</span></div>
-                        <div class="ticker-item"><span class="ticker-sym">FMTY 14</span><span class="ticker-price">$11.82</span><span class="ticker-badge-chg down">-0.25% ▼</span></div>
+                        <div class="ticker-item"><span class="ticker-sym">USD/MXN</span><span class="ticker-price">$17.24</span><span class="ticker-badge-chg down">-0.05% ▼</span></div>
+                        <div class="ticker-item"><span class="ticker-sym">CETES 28D</span><span class="ticker-price gold">6.25%</span><span class="ticker-tag">Tasa Fija</span></div>
+                        <div class="ticker-item"><span class="ticker-sym">S&P/BMV IPC</span><span class="ticker-price">63,510.00</span><span class="ticker-badge-chg down">-0.65% ▼</span></div>
+                        <div class="ticker-item"><span class="ticker-sym">FUNO 11</span><span class="ticker-price">$29.15</span><span class="ticker-badge-chg down">-2.87% ▼</span></div>
+                        <div class="ticker-item"><span class="ticker-sym">IVVPESO</span><span class="ticker-price">$154.98</span><span class="ticker-badge-chg up">+0.81% ▲</span></div>
+                        <div class="ticker-item"><span class="ticker-sym">FMTY 14</span><span class="ticker-price">$14.09</span><span class="ticker-badge-chg down">-1.47% ▼</span></div>
                         <div class="ticker-item"><span class="ticker-sym">UDIS</span><span class="ticker-price gold">8.1924</span><span class="ticker-tag">Inflación</span></div>
                     </div>
                 </div>
@@ -456,7 +456,7 @@
                     <div>
                         <h3 style="font-family: var(--font-heading); font-size: 19px; color: var(--text-on-dark); display: flex; align-items: center; gap: 8px;">
                             <span>🏦</span> Préstamos Otorgados & Retorno de Interés
-                            <span class="cetes-benchmark-pill">🏛️ Benchmark CETES: 10.75% Anual</span>
+                            <span class="cetes-benchmark-pill">🏛️ Benchmark CETES: 6.25% Anual</span>
                         </h3>
                         <p style="color: var(--text-secondary); font-size: 13px; margin-top: 2px;">
                             Seguimiento de capital prestado, saldo insoluto e ingresos por intereses pactados.
@@ -478,7 +478,7 @@
                     <div>
                         <h3 style="font-family: var(--font-heading); font-size: 19px; color: var(--text-on-dark); display: flex; align-items: center; gap: 8px;">
                             <span>🏠</span> Propiedades en Renta & Cap Rate
-                            <span class="cetes-benchmark-pill">🏛️ Benchmark CETES: 10.75% Anual</span>
+                            <span class="cetes-benchmark-pill">🏛️ Benchmark CETES: 6.25% Anual</span>
                         </h3>
                         <p style="color: var(--text-secondary); font-size: 13px; margin-top: 2px;">
                             Inmuebles en arrendamiento, rentas brutas, gastos fijos y tasa de capitalización (Cap Rate).
@@ -875,7 +875,7 @@
                         <strong id="loan-preview-monthly" style="color: var(--azteca-green-vibrant); font-family: var(--font-mono); margin-left: 6px;">$0.00</strong>
                     </div>
                     <div>
-                        <span style="color: var(--text-muted)">vs CETES (10.75%):</span>
+                        <span style="color: var(--text-muted)">vs CETES (6.25%):</span>
                         <span id="loan-preview-spread" class="cetes-spread-badge positive" style="margin-left: 6px;">+0.00%</span>
                     </div>
                 </div>
@@ -994,7 +994,7 @@
                         <strong id="rental-preview-caprate" style="color: var(--azteca-green-vibrant); font-family: var(--font-mono); margin-left: 6px;">0.0%</strong>
                     </div>
                     <div>
-                        <span style="color: var(--text-muted)">vs CETES (10.75%):</span>
+                        <span style="color: var(--text-muted)">vs CETES (6.25%):</span>
                         <span id="rental-preview-spread" class="cetes-spread-badge warning" style="margin-left: 6px;">-0.00%</span>
                     </div>
                 </div>
@@ -1185,12 +1185,12 @@
                     <div class="form-group">
                         <label for="snowball-rate" style="display: flex; justify-content: space-between;">
                             <span>Tasa Anual de Rendimiento (%)</span>
-                            <span id="snowball-rate-val" style="color: var(--azteca-gold); font-family: var(--font-mono); font-weight: 600;">10.75% (CETES)</span>
+                            <span id="snowball-rate-val" style="color: var(--azteca-gold); font-family: var(--font-mono); font-weight: 600;">6.25% (CETES)</span>
                         </label>
-                        <input type="range" id="snowball-rate" min="4" max="25" step="0.25" value="10.75" class="snowball-slider" style="width: 100%;">
+                        <input type="range" id="snowball-rate" min="3" max="25" step="0.25" value="6.25" class="snowball-slider" style="width: 100%;">
                         <div style="display: flex; justify-content: space-between; font-size: 10px; color: var(--text-muted); margin-top: 2px;">
-                            <span>4.5% (Inflación)</span>
-                            <span>10.75% (CETES 28D)</span>
+                            <span>4.0% (Inflación)</span>
+                            <span>6.25% (CETES 28D)</span>
                             <span>15% (Préstamos)</span>
                             <span>25%</span>
                         </div>
@@ -1411,6 +1411,6 @@
 
     <!-- Custom Logic -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
-    <script src="app.js?v=20260918_v20"></script>
+    <script src="app.js?v=20260918_v21"></script>
 </body>
 </html>

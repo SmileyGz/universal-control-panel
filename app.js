@@ -2019,15 +2019,20 @@ const loadSavingsData = async () => {
 let latestMarketQuotes = {};
 
 const DEFAULT_MARKET_QUOTES = [
-    { symbol: 'CETES28D', name: 'CETES 28 Días (Subasta Banxico)', price: 10.75, change_pct: 0.0, change_abs: 0.0, asset_type: 'cetes', market: 'Banxico / Directo', currency: 'MXN', source: 'Banxico SIE (SF43718)' },
-    { symbol: 'USDMXN',   name: 'Dólar FIX Oficial Banxico',        price: 18.35, change_pct: -0.42, change_abs: -0.077, asset_type: 'currency', market: 'Banxico', currency: 'MXN', source: 'Banxico SIE (SF60653)' },
-    { symbol: 'UDIS',     name: 'Unidades de Inversión (UDI)',       price: 8.1924, change_pct: 0.04, change_abs: 0.0032, asset_type: 'index', market: 'Banxico', currency: 'MXN', source: 'Banxico SIE (SP68257)' },
-    { symbol: 'IPC',      name: 'S&P / BMV IPC Índice Líder',    price: 63509.87, change_pct: -0.65, change_abs: -414.90, asset_type: 'index', market: 'BMV', currency: 'MXN', source: 'Bolsa Mexicana de Valores' },
-    { symbol: 'FUNO11',   name: 'Fibra Uno Administradora',         price: 29.15, change_pct: -2.87, change_abs: -0.86, asset_type: 'fibra', market: 'BMV', currency: 'MXN', source: 'BMV / Yahoo Finance' },
-    { symbol: 'IVVPESO',  name: 'iShares Core S&P 500 Peso Hedged', price: 153.60, change_pct: -0.99, change_abs: -1.53, asset_type: 'etf', market: 'SIC / BMV', currency: 'MXN', source: 'SIC / BMV (IVVPESO.MX)' },
-    { symbol: 'FMTY14',   name: 'Fibra Monterrey Inmobiliaria',     price: 14.09, change_pct: -1.47, change_abs: -0.21, asset_type: 'fibra', market: 'BMV', currency: 'MXN', source: 'BMV / Yahoo Finance' },
-    { symbol: 'TIIE28',   name: 'TIIE de Fondeo Banxico a 28D',     price: 11.00, change_pct: 0.0, change_abs: 0.0, asset_type: 'cetes', market: 'Banxico', currency: 'MXN', source: 'Banxico SIE (SF43783)' }
+    { symbol: 'CETES28D', name: 'CETES 28 Días (Subasta Banxico)',  price: 6.25,    change_pct: 0.0,   change_abs: 0.0,   asset_type: 'cetes',    market: 'Banxico / Directo', currency: 'MXN', source: 'Banxico SIE (SF43718)' },
+    { symbol: 'USDMXN',   name: 'Dólar FIX Oficial Banxico',        price: 17.2425, change_pct: -0.05, change_abs: -0.008, asset_type: 'currency', market: 'Banxico',           currency: 'MXN', source: 'Banxico SIE (SF60653)' },
+    { symbol: 'UDIS',     name: 'Unidades de Inversión (UDI)',       price: 8.1924,  change_pct: 0.02,  change_abs: 0.0016, asset_type: 'index',    market: 'Banxico',           currency: 'MXN', source: 'Banxico SIE (SP68257)' },
+    { symbol: 'IPC',      name: 'S&P / BMV IPC Índice Líder',    price: 63510.00, change_pct: -0.65, change_abs: -415.0, asset_type: 'index',    market: 'BMV',               currency: 'MXN', source: 'Bolsa Mexicana de Valores' },
+    { symbol: 'FUNO11',   name: 'Fibra Uno Administradora',         price: 29.15,   change_pct: -2.87, change_abs: -0.86,  asset_type: 'fibra',    market: 'BMV',               currency: 'MXN', source: 'BMV / Yahoo Finance' },
+    { symbol: 'IVVPESO',  name: 'iShares Core S&P 500 Peso Hedged', price: 154.98,  change_pct: 0.81,  change_abs: 1.24,   asset_type: 'etf',      market: 'SIC / BMV',         currency: 'MXN', source: 'SIC / BMV (IVVPESO.MX)' },
+    { symbol: 'FMTY14',   name: 'Fibra Monterrey Inmobiliaria',     price: 14.09,   change_pct: -1.47, change_abs: -0.21,  asset_type: 'fibra',    market: 'BMV',               currency: 'MXN', source: 'BMV / Yahoo Finance' },
+    { symbol: 'TIIE28',   name: 'TIIE de Fondeo Banxico a 28D',      price: 6.50,    change_pct: 0.0,   change_abs: 0.0,   asset_type: 'cetes',    market: 'Banxico',           currency: 'MXN', source: 'Banxico SIE (SF43783)' }
 ];
+
+const getCetesRate = () => {
+    const quote = latestMarketQuotes['CETES28D'];
+    return (quote && typeof quote.price === 'number' && quote.price > 0) ? quote.price : 6.25;
+};
 
 const resolveMarketQuote = (rawTicker = '', name = '') => {
     const cleanSym = String(rawTicker || '').trim().toUpperCase().replace(/[^A-Z0-9]/g, '');
@@ -2174,7 +2179,7 @@ const loadLiveMarketQuotes = async () => {
     });
 
     try {
-        const cached = localStorage.getItem('ucp_market_quotes_v1');
+        const cached = localStorage.getItem('ucp_market_quotes_v2');
         if (cached) {
             const parsed = JSON.parse(cached);
             Object.assign(latestMarketQuotes, parsed);
@@ -2195,7 +2200,7 @@ const loadLiveMarketQuotes = async () => {
             data.forEach(q => {
                 latestMarketQuotes[q.symbol.toUpperCase()] = q;
             });
-            localStorage.setItem('ucp_market_quotes_v1', JSON.stringify(latestMarketQuotes));
+            localStorage.setItem('ucp_market_quotes_v2', JSON.stringify(latestMarketQuotes));
             updateSidebarMacroCard();
             renderTickerTrack();
             return;
@@ -2214,7 +2219,7 @@ const loadLiveMarketQuotes = async () => {
                 latestMarketQuotes['USDMXN'].source = 'Mercado FX Interbancario';
                 updateSidebarMacroCard();
                 renderTickerTrack();
-                localStorage.setItem('ucp_market_quotes_v1', JSON.stringify(latestMarketQuotes));
+                localStorage.setItem('ucp_market_quotes_v2', JSON.stringify(latestMarketQuotes));
             }
         }
     } catch {
@@ -2613,15 +2618,19 @@ const renderInvestmentsTable = () => {
         const meterClass = isPositive ? 'gain' : 'loss';
         const marketLabel = h.asset_type === 'cetes' ? 'Banxico / Directo' : (h.asset_type === 'fibra' ? 'BMV' : 'SIC / BMV');
 
-        // Real Yield net of Banxico 4.5% annual inflation (UDIs / INPC)
+        // Real Yield net of estimated inflation (~4.0% anual Banxico / INPC)
         let realYieldBadge = '';
+        const currentCetesBenchmark = getCetesRate();
+        const estInflation = 4.0;
         if (h.asset_type === 'cetes') {
-            realYieldBadge = `<span class="badge-real-yield" title="Tasa libre de riesgo Banxico 10.75% anual menos 4.5% inflación (INPC)">R. Real: +6.25%</span>`;
+            const realYield = currentCetesBenchmark - estInflation;
+            realYieldBadge = `<span class="badge-real-yield" title="Tasa libre de riesgo Banxico ${currentCetesBenchmark.toFixed(2)}% anual menos ${estInflation.toFixed(1)}% inflación (INPC)">R. Real: ${realYield >= 0 ? '+' : ''}${realYield.toFixed(2)}%</span>`;
         } else if (h.asset_type === 'fibra') {
-            realYieldBadge = `<span class="badge-real-yield" title="Rendimiento por distribuciones BMV estimado ~8.5% menos 4.5% inflación">Yield Real: +4.00%</span>`;
+            const realYield = 8.5 - estInflation;
+            realYieldBadge = `<span class="badge-real-yield" title="Rendimiento por distribuciones BMV estimado ~8.5% menos ${estInflation.toFixed(1)}% inflación">Yield Real: +${realYield.toFixed(2)}%</span>`;
         } else if (Math.abs(h.pnlPct) > 0.01) {
-            const realGain = h.pnlPct - 4.5;
-            realYieldBadge = `<span class="badge-real-yield ${realGain >= 0 ? '' : 'warning'}" title="Retorno neto descontando 4.5% de inflación Banxico">R. Real: ${realGain >= 0 ? '+' : ''}${realGain.toFixed(1)}%</span>`;
+            const realGain = h.pnlPct - estInflation;
+            realYieldBadge = `<span class="badge-real-yield ${realGain >= 0 ? '' : 'warning'}" title="Retorno neto descontando ${estInflation.toFixed(1)}% de inflación Banxico">R. Real: ${realGain >= 0 ? '+' : ''}${realGain.toFixed(1)}%</span>`;
         }
 
         const sparklineSVG = generateSparklineSVG(h.pnlPct, isPositive, h.asset_type);
@@ -3112,8 +3121,9 @@ const renderLoansGrid = () => {
         const progressPct = initial > 0 ? Math.min(100, (repaid / initial) * 100) : 0;
         const isPaidOff = current <= 0 || loan.status === 'paid_off';
         const annualRate = rate * 12;
-        const cetesSpread = annualRate - 10.75;
-        const cetesBadge = `<span class="cetes-spread-badge ${cetesSpread >= 0 ? 'positive' : 'warning'}" title="Tasa anualizada: ${annualRate.toFixed(1)}% vs CETES 28D (10.75%)">${cetesSpread >= 0 ? '▲ +' : '▼ '}${cetesSpread.toFixed(2)}% vs CETES</span>`;
+        const cetesBench = getCetesRate();
+        const cetesSpread = annualRate - cetesBench;
+        const cetesBadge = `<span class="cetes-spread-badge ${cetesSpread >= 0 ? 'positive' : 'warning'}" title="Tasa anualizada: ${annualRate.toFixed(1)}% vs CETES 28D (${cetesBench.toFixed(2)}%)">${cetesSpread >= 0 ? '▲ +' : '▼ '}${cetesSpread.toFixed(2)}% vs CETES</span>`;
 
         const card = document.createElement('div');
         card.className = 'portfolio-card glass-panel';
@@ -3262,8 +3272,9 @@ const renderRentalsGrid = () => {
         const net = Math.max(0, rent - exp);
         const annualNet = net * 12;
         const capRate = val > 0 ? ((annualNet / val) * 100) : 0;
-        const capSpread = capRate - 10.75;
-        const capSpreadBadge = `<span class="cetes-spread-badge ${capSpread >= 0 ? 'positive' : 'warning'}" title="Cap Rate vs CETES 28D (10.75%)">${capSpread >= 0 ? '▲ +' : '▼ '}${capSpread.toFixed(2)}% vs CETES</span>`;
+        const cetesBench = getCetesRate();
+        const capSpread = capRate - cetesBench;
+        const capSpreadBadge = `<span class="cetes-spread-badge ${capSpread >= 0 ? 'positive' : 'warning'}" title="Cap Rate vs CETES 28D (${cetesBench.toFixed(2)}%)">${capSpread >= 0 ? '▲ +' : '▼ '}${capSpread.toFixed(2)}% vs CETES</span>`;
 
         const card = document.createElement('div');
         card.className = 'portfolio-card glass-panel';
@@ -3407,7 +3418,7 @@ const updateLoanPreview = () => {
     const rate = parseFloat(document.getElementById('loan-rate')?.value) || 0;
     const monthlyInterest = balance * (rate / 100);
     const annualRate = rate * 12;
-    const spread = annualRate - 10.75;
+    const spread = annualRate - getCetesRate();
 
     const monthlyEl = document.getElementById('loan-preview-monthly');
     const spreadEl = document.getElementById('loan-preview-spread');
@@ -3591,7 +3602,7 @@ const updateRentalPreview = () => {
     const net = Math.max(0, rent - exp);
     const annualNet = net * 12;
     const capRate = val > 0 ? ((annualNet / val) * 100) : 0;
-    const spread = capRate - 10.75;
+    const spread = capRate - getCetesRate();
 
     const capEl = document.getElementById('rental-preview-caprate');
     const spreadEl = document.getElementById('rental-preview-spread');
@@ -4071,7 +4082,8 @@ const calculateSnowball = () => {
 
     const P = Math.max(0, parseFloat(initialInput?.value) || 0);
     const PMT = Math.max(0, parseFloat(monthlyInput?.value) || 0);
-    const annualRate = Math.max(0, parseFloat(rateInput?.value) || 10.75);
+    const cetesBenchmark = getCetesRate();
+    const annualRate = Math.max(0, parseFloat(rateInput?.value) || cetesBenchmark);
     const t = snowballSelectedYears;
 
     // Label indicators
@@ -4082,7 +4094,7 @@ const calculateSnowball = () => {
     if (initialValEl) initialValEl.textContent = formatCurrency(P);
     if (monthlyValEl) monthlyValEl.textContent = `${formatCurrency(PMT)} / mes`;
     if (rateValEl) {
-        const isCetes = Math.abs(annualRate - 10.75) < 0.1;
+        const isCetes = Math.abs(annualRate - cetesBenchmark) < 0.2;
         rateValEl.textContent = `${annualRate.toFixed(2)}% ${isCetes ? '(CETES 28D)' : ''}`;
     }
 
@@ -4149,6 +4161,11 @@ const openSnowballModal = () => {
     const initialInput = document.getElementById('snowball-initial');
     if (initialInput && currentCapital > 0 && parseFloat(initialInput.value) === 50000) {
         initialInput.value = Math.round(currentCapital);
+    }
+
+    const rateInput = document.getElementById('snowball-rate');
+    if (rateInput && (rateInput.value === '10.75' || !rateInput.dataset.userModified)) {
+        rateInput.value = getCetesRate().toFixed(2);
     }
 
     calculateSnowball();

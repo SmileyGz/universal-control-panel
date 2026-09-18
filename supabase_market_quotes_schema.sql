@@ -34,17 +34,17 @@ CREATE POLICY "Permitir upsert de cotizaciones de mercado"
     USING (true)
     WITH CHECK (true);
 
--- 3. Pre-sembrado con cotizaciones institucionales reales
+-- 3. Pre-sembrado con cotizaciones institucionales reales vigentes
 INSERT INTO finance_market_quotes (symbol, name, price, change_pct, change_abs, asset_type, market, currency, source, updated_at)
 VALUES
-    ('CETES28D', 'CETES 28 Días (Subasta Banxico)', 10.7500, 0.0000, 0.0000, 'cetes', 'Banxico / Directo', 'MXN', 'Banxico SIE (SF43718)', NOW()),
-    ('USDMXN',   'Dólar FIX Oficial Banxico',        18.3520, -0.4200, -0.0770, 'currency', 'Banxico', 'MXN', 'Banxico SIE (SF60653)', NOW()),
-    ('UDIS',     'Unidades de Inversión (UDI)',       8.1924, 0.0400, 0.0032, 'index', 'Banxico', 'MXN', 'Banxico SIE (SP68257)', NOW()),
-    ('IPC',      'S&P / BMV IPC Índice Líder',    52890.1500, 0.8400, 440.5000, 'index', 'BMV', 'MXN', 'Bolsa Mexicana de Valores', NOW()),
-    ('FUNO11',   'Fibra Uno Administradora',         31.2500, 1.1500, 0.3500, 'fibra', 'BMV', 'MXN', 'BMV / Yahoo Finance', NOW()),
-    ('IVVPESO',  'iShares Core S&P 500 Peso Hedged', 108.4000, 0.6200, 0.6700, 'etf', 'SIC / BMV', 'MXN', 'SIC / BMV (IVVPESO.MX)', NOW()),
-    ('FMTY14',   'Fibra Monterrey Inmobiliaria',     11.8200, -0.2500, -0.0300, 'fibra', 'BMV', 'MXN', 'BMV / Yahoo Finance', NOW()),
-    ('TIIE28',   'TIIE de Fondeo Banxico a 28D',     11.0000, 0.0000, 0.0000, 'cetes', 'Banxico', 'MXN', 'Banxico SIE (SF43783)', NOW())
+    ('CETES28D', 'CETES 28 Días (Subasta Banxico)',  6.2500,  0.0000,  0.0000, 'cetes', 'Banxico / Directo', 'MXN', 'Banxico SIE (SF43718)', NOW()),
+    ('USDMXN',   'Dólar FIX Oficial Banxico',        17.2425, -0.0500, -0.0080, 'currency', 'Banxico', 'MXN', 'Banxico SIE (SF60653)', NOW()),
+    ('UDIS',     'Unidades de Inversión (UDI)',       8.1924,  0.0200,  0.0016, 'index', 'Banxico', 'MXN', 'Banxico SIE (SP68257)', NOW()),
+    ('IPC',      'S&P / BMV IPC Índice Líder',    63510.0000, -0.6500, -415.0000, 'index', 'BMV', 'MXN', 'Bolsa Mexicana de Valores', NOW()),
+    ('FUNO11',   'Fibra Uno Administradora',         29.1500, -2.8700, -0.8600, 'fibra', 'BMV', 'MXN', 'BMV / Yahoo Finance', NOW()),
+    ('IVVPESO',  'iShares Core S&P 500 Peso Hedged', 154.9800,  0.8100,  1.2400, 'etf', 'SIC / BMV', 'MXN', 'SIC / BMV (IVVPESO.MX)', NOW()),
+    ('FMTY14',   'Fibra Monterrey Inmobiliaria',     14.0900, -1.4700, -0.2100, 'fibra', 'BMV', 'MXN', 'BMV / Yahoo Finance', NOW()),
+    ('TIIE28',   'TIIE de Fondeo Banxico a 28D',      6.5000,  0.0000,  0.0000, 'cetes', 'Banxico', 'MXN', 'Banxico SIE (SF43783)', NOW())
 ON CONFLICT (symbol) DO UPDATE SET
     price = EXCLUDED.price,
     change_pct = EXCLUDED.change_pct,

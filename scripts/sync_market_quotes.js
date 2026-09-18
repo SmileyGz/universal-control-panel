@@ -37,16 +37,16 @@ function normalizeQuote(q) {
     };
 }
 
-// Cotizaciones institucionales base de contingencia
+// Cotizaciones institucionales base de contingencia (actualizadas a realidad Banxico / BMV 2026)
 const FALLBACK_QUOTES = {
-    'CETES28D': normalizeQuote({ symbol: 'CETES28D', name: 'CETES 28 Días (Subasta Banxico)', price: 10.75, change_pct: 0.0, change_abs: 0.0, asset_type: 'cetes', market: 'Banxico / Directo', currency: 'MXN', source: 'Banxico SIE (SF43718)' }),
-    'USDMXN':   normalizeQuote({ symbol: 'USDMXN',   name: 'Dólar FIX Oficial Banxico',        price: 18.35, change_pct: -0.42, change_abs: -0.077, asset_type: 'currency', market: 'Banxico', currency: 'MXN', source: 'Banxico SIE (SF60653)' }),
-    'UDIS':     normalizeQuote({ symbol: 'UDIS',     name: 'Unidades de Inversión (UDI)',       price: 8.1924, change_pct: 0.04, change_abs: 0.0032, asset_type: 'index', market: 'Banxico', currency: 'MXN', source: 'Banxico SIE (SP68257)' }),
-    'IPC':      normalizeQuote({ symbol: 'IPC',      name: 'S&P / BMV IPC Índice Líder',    price: 52890.15, change_pct: 0.84, change_abs: 440.50, asset_type: 'index', market: 'BMV', currency: 'MXN', source: 'Bolsa Mexicana de Valores' }),
-    'FUNO11':   normalizeQuote({ symbol: 'FUNO11',   name: 'Fibra Uno Administradora',         price: 31.25, change_pct: 1.15, change_abs: 0.35, asset_type: 'fibra', market: 'BMV', currency: 'MXN', source: 'BMV / Yahoo Finance' }),
-    'IVVPESO':  normalizeQuote({ symbol: 'IVVPESO',  name: 'iShares Core S&P 500 Peso Hedged', price: 108.40, change_pct: 0.62, change_abs: 0.67, asset_type: 'etf', market: 'SIC / BMV', currency: 'MXN', source: 'SIC / BMV (IVVPESO.MX)' }),
-    'FMTY14':   normalizeQuote({ symbol: 'FMTY14',   name: 'Fibra Monterrey Inmobiliaria',     price: 11.82, change_pct: -0.25, change_abs: -0.03, asset_type: 'fibra', market: 'BMV', currency: 'MXN', source: 'BMV / Yahoo Finance' }),
-    'TIIE28':   normalizeQuote({ symbol: 'TIIE28',   name: 'TIIE de Fondeo Banxico a 28D',     price: 11.00, change_pct: 0.0, change_abs: 0.0, asset_type: 'cetes', market: 'Banxico', currency: 'MXN', source: 'Banxico SIE (SF43783)' })
+    'CETES28D': normalizeQuote({ symbol: 'CETES28D', name: 'CETES 28 Días (Subasta Banxico)',  price: 6.25,   change_pct: 0.0,   change_abs: 0.0,   asset_type: 'cetes',    market: 'Banxico / Directo', currency: 'MXN', source: 'Banxico SIE (SF43718)' }),
+    'USDMXN':   normalizeQuote({ symbol: 'USDMXN',   name: 'Dólar FIX Oficial Banxico',        price: 17.2425, change_pct: -0.05, change_abs: -0.008, asset_type: 'currency', market: 'Banxico',           currency: 'MXN', source: 'Banxico SIE (SF60653)' }),
+    'UDIS':     normalizeQuote({ symbol: 'UDIS',     name: 'Unidades de Inversión (UDI)',       price: 8.1924,  change_pct: 0.02,  change_abs: 0.0016, asset_type: 'index',    market: 'Banxico',           currency: 'MXN', source: 'Banxico SIE (SP68257)' }),
+    'IPC':      normalizeQuote({ symbol: 'IPC',      name: 'S&P / BMV IPC Índice Líder',    price: 63510.00, change_pct: -0.65, change_abs: -415.0, asset_type: 'index',    market: 'BMV',               currency: 'MXN', source: 'Bolsa Mexicana de Valores' }),
+    'FUNO11':   normalizeQuote({ symbol: 'FUNO11',   name: 'Fibra Uno Administradora',         price: 29.15,   change_pct: -2.87, change_abs: -0.86,  asset_type: 'fibra',    market: 'BMV',               currency: 'MXN', source: 'BMV / Yahoo Finance' }),
+    'IVVPESO':  normalizeQuote({ symbol: 'IVVPESO',  name: 'iShares Core S&P 500 Peso Hedged', price: 154.98,  change_pct: 0.81,  change_abs: 1.24,   asset_type: 'etf',      market: 'SIC / BMV',         currency: 'MXN', source: 'SIC / BMV (IVVPESO.MX)' }),
+    'FMTY14':   normalizeQuote({ symbol: 'FMTY14',   name: 'Fibra Monterrey Inmobiliaria',     price: 14.09,   change_pct: -1.47, change_abs: -0.21,  asset_type: 'fibra',    market: 'BMV',               currency: 'MXN', source: 'BMV / Yahoo Finance' }),
+    'TIIE28':   normalizeQuote({ symbol: 'TIIE28',   name: 'TIIE de Fondeo Banxico a 28D',      price: 6.50,    change_pct: 0.0,   change_abs: 0.0,   asset_type: 'cetes',    market: 'Banxico',           currency: 'MXN', source: 'Banxico SIE (SF43783)' })
 };
 
 // 1. Obtener cotizaciones desde Yahoo Finance (BMV)
