@@ -112,30 +112,41 @@ document.getElementById('tx-form').addEventListener('submit', async (e) => {
 // ============================================================
 // NAVIGATION
 // ============================================================
+const switchView = (target) => {
+    document.querySelectorAll('.nav-item').forEach(n => {
+        if (n.getAttribute('data-target') === target) n.classList.add('active');
+        else n.classList.remove('active');
+    });
+    document.querySelectorAll('.view-section').forEach(s => s.classList.remove('active'));
+    const targetSection = document.getElementById(`view-${target}`);
+    if (targetSection) targetSection.classList.add('active');
+
+    const titles = { 
+        dashboard: 'Overview', 
+        transactions: 'Mis Transacciones', 
+        portfolio: 'Business Assets & Portfolio',
+        investments: 'Portafolio de Inversiones (GBM+ / Bolsa)'
+    };
+    const titleEl = document.getElementById('current-page-title');
+    if (titleEl) titleEl.textContent = titles[target] || 'Overview';
+
+    if (target === 'dashboard') {
+        cashflowChartInstance?.update();
+        portfolioChartInstance?.update();
+    }
+};
+
 document.querySelectorAll('.nav-item').forEach(item => {
     item.addEventListener('click', (e) => {
         e.preventDefault();
-        document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
-        item.classList.add('active');
-
         const target = item.getAttribute('data-target');
-        document.querySelectorAll('.view-section').forEach(s => s.classList.remove('active'));
-        document.getElementById(`view-${target}`).classList.add('active');
-
-        const titles = { 
-            dashboard: 'Overview', 
-            transactions: 'Mis Transacciones', 
-            portfolio: 'Business Assets & Portfolio',
-            investments: 'Portafolio de Inversiones (GBM+ / Bolsa)'
-        };
-        document.getElementById('current-page-title').textContent = titles[target] || 'Overview';
-
-        if (target === 'dashboard') {
-            cashflowChartInstance?.update();
-            portfolioChartInstance?.update();
-        }
+        switchView(target);
     });
 });
+
+// Interactive Tier Bridges
+document.getElementById('kpi-card-networth')?.addEventListener('click', () => switchView('portfolio'));
+document.getElementById('btn-jump-to-investments')?.addEventListener('click', () => switchView('investments'));
 
 // ============================================================
 // RENDER CASHFLOW CHART
@@ -442,100 +453,104 @@ document.getElementById('tx-search')?.addEventListener('input', () => {
 // ============================================================
 // LOAD PORTFOLIO (SUPABASE)
 // ============================================================
+let rawPortfolioAssets = [];
+
 const CATEGORY_META = {
-    'Préstamos':  { icon: '🏦', color: '#C8973A' },
-    'Inversiones':{ icon: '📈', color: '#008c5b' },
-    'Liquidez':   { icon: '💵', color: '#006847' },
-    'Ahorro':     { icon: '🏧', color: '#9A6E22' },
-    'Negocios':   { icon: '🛒', color: '#7a288a' }, // E-commerce, Comercio y Storefronts
-    'Inmuebles':  { icon: '🏠', color: '#2a9d8f' },
-    'Otros':      { icon: '💰', color: '#6B3A1F' },
+    'Préstamos':  { icon: '🏦', color: '#38BDF8' },
+    'Inversiones':{ icon: '📈', color: '#00A859' },
+    'Liquidez':   { icon: '💵', color: '#FFC72C' },
+    'Ahorro':     { icon: '🏧', color: '#EAB308' },
+    'Negocios':   { icon: '🛒', color: '#A855F7' }, // E-commerce, Comercio y Storefronts
+    'Inmuebles':  { icon: '🏠', color: '#FB923C' },
+    'Otros':      { icon: '💰', color: '#94A3B8' },
 };
 
 const renderPortfolioFromAssets = (assets) => {
+    rawPortfolioAssets = assets || [];
     const grid = document.getElementById('portfolio-grid');
     if (grid) grid.innerHTML = '';
 
-    const validAssets = (assets || []).filter(a => a.name && a.name.trim() !== '');
-    const countLabel = validAssets.length;
-
-    const grouped = {};
-    let grandTotal = 0;
-    validAssets.forEach(a => {
-        const cat = a.category || 'Otros';
-        if (!grouped[cat]) grouped[cat] = [];
-        grouped[cat].push(a);
-        const val = parseFloat(a.value || 0);
-        grandTotal += val;
+    // STRICT ASSET DEDUPLICATION:
+    // Loans have their dedicated interactive section (Section 1)
+    // Rentals have their dedicated interactive section (Section 2)
+    // Stocks & CETES have their dedicated trading terminal (Inversiones & Stocks)
+    // Here in Section 3 we ONLY display Business Storefronts, Bank/Liquidity Accounts & General Funds
+    const EXCLUDED_GRID_CATS = ['préstamos', 'prestamos', 'inversiones', 'inmuebles', 'rentas'];
+    const businessAndLiquidAssets = (assets || []).filter(a => {
+        if (!a.name || a.name.trim() === '') return false;
+        const cat = (a.category || '').toLowerCase().trim();
+        const type = (a.asset_type || '').toLowerCase().trim();
+        if (EXCLUDED_GRID_CATS.includes(cat)) return false;
+        if (['fibra', 'etf', 'stock', 'cetes'].includes(type)) return false;
+        return true;
     });
 
-    const kpiSavings = document.getElementById('kpi-savings');
-    if (kpiSavings) kpiSavings.textContent = formatCurrency(grandTotal);
-
-    const portfolioTotalKpi = document.getElementById('portfolio-kpi-total');
-    if (portfolioTotalKpi) portfolioTotalKpi.textContent = formatCurrency(grandTotal);
-
-    const portfolioTotalLabel = document.getElementById('portfolio-total-label');
-    if (portfolioTotalLabel) {
-        portfolioTotalLabel.textContent = `Total: ${formatCurrency(grandTotal)} — ${countLabel} activos`;
-    }
-
-    const chartLabels = [], chartData = [];
-    for (const [cat, items] of Object.entries(grouped)) {
-        const meta = CATEGORY_META[cat] || CATEGORY_META['Otros'];
-        const subTotal = items.reduce((s, a) => s + parseFloat(a.value || 0), 0);
-        chartLabels.push(cat);
-        chartData.push(subTotal);
-
-        if (grid) {
-            grid.innerHTML += `
-                <div class="portfolio-card glass-panel" style="border-left: 3px solid ${meta.color}; grid-column: 1 / -1; display: flex; justify-content: space-between; align-items: center; padding: 12px 20px;">
-                    <h4 style="color:${meta.color}; font-size: 15px;">${meta.icon} ${cat}</h4>
-                    <span style="color:var(--text-on-dark); font-family:var(--font-heading); font-size: 18px; font-weight: 600;">${formatCurrency(subTotal)}</span>
+    if (grid) {
+        if (businessAndLiquidAssets.length === 0) {
+            grid.innerHTML = `
+                <div class="portfolio-card glass-panel" style="grid-column: 1 / -1; text-align: center; padding: 28px;">
+                    <p style="color: var(--text-muted); font-size: 14px;">No tienes negocios comerciales ni cuentas de liquidez registradas por ahora.</p>
+                    <p style="color: var(--text-secondary); font-size: 12px; margin-top: 6px;">Haz clic en "Nuevo Negocio / Activo" para dar de alta tus tiendas online (Bazarito, etc.) o cuentas de liquidez.</p>
                 </div>`;
+        } else {
+            const grouped = {};
+            businessAndLiquidAssets.forEach(a => {
+                const cat = a.category || 'Otros';
+                if (!grouped[cat]) grouped[cat] = [];
+                grouped[cat].push(a);
+            });
 
-            items.forEach(a => {
-                const icon = a.icon || meta.icon;
-                const safeName = (a.name || '').replace(/"/g, '&quot;');
-
-                // Detect storefront URL
-                let storeUrl = '';
-                if (a.url) {
-                    storeUrl = a.url;
-                } else if (a.notes && a.notes.includes('http')) {
-                    const m = a.notes.match(/https?:\/\/[^\s]+/);
-                    if (m) storeUrl = m[0];
-                }
-
-                // Clean notes display if URL is in notes
-                const displayNotes = (a.notes || '').replace(/https?:\/\/[^\s]+/, '').replace(/\|\s*URL:?\s*/i, '').trim();
+            for (const [cat, items] of Object.entries(grouped)) {
+                const meta = CATEGORY_META[cat] || CATEGORY_META['Otros'];
+                const subTotal = items.reduce((s, a) => s + parseFloat(a.value || 0), 0);
 
                 grid.innerHTML += `
-                    <div class="portfolio-card glass-panel" style="display: flex; flex-direction: column; justify-content: space-between;">
-                        <div>
-                            <div class="p-card-header" style="display: flex; justify-content: space-between; align-items: flex-start; gap: 8px;">
-                                <h4 style="font-size: 15px; word-break: break-word;">${icon} ${a.name}</h4>
-                                <button class="delete-btn btn-delete-asset" data-id="${a.id}" data-name="${safeName}" title="Eliminar negocio/activo" style="font-size: 11px; padding: 2px 7px;">✕</button>
-                            </div>
-                            <p class="p-card-amount" style="margin-top: 8px;">${formatCurrency(parseFloat(a.value || 0))}</p>
-                            ${displayNotes ? `<p style="color:var(--text-muted); font-size: 12px; margin-top: 6px; line-height: 1.4;">${displayNotes}</p>` : ''}
-                        </div>
-                        <div style="margin-top: 14px; padding-top: 10px; border-top: 1px solid rgba(255,255,255,0.06); display: flex; gap: 8px; flex-wrap: wrap; align-items: center;">
-                            ${storeUrl ? `
-                                <a href="${storeUrl}" target="_blank" rel="noopener noreferrer" class="btn-action-loan" style="text-decoration: none; display: inline-flex; align-items: center; gap: 4px; font-size: 11px; padding: 4px 9px; color: var(--mexican-gold); border-color: var(--mexican-gold);">
-                                    <span>Tienda en Vivo</span> ↗
-                                </a>
-                            ` : ''}
-                            <button class="btn-action-loan btn-edit-asset-val" data-id="${a.id}" data-name="${safeName}" data-value="${a.value || 0}" style="font-size: 11px; padding: 4px 9px;">
-                                ✏️ Valuación
-                            </button>
-                        </div>
+                    <div class="portfolio-card glass-panel" style="border-left: 3px solid ${meta.color}; grid-column: 1 / -1; display: flex; justify-content: space-between; align-items: center; padding: 12px 20px;">
+                        <h4 style="color:${meta.color}; font-size: 15px;">${meta.icon} ${cat}</h4>
+                        <span style="color:var(--text-on-dark); font-family:var(--font-heading); font-size: 18px; font-weight: 600;">${formatCurrency(subTotal)}</span>
                     </div>`;
-            });
-        }
-    }
 
-    if (grid) {
+                items.forEach(a => {
+                    const icon = a.icon || meta.icon;
+                    const safeName = (a.name || '').replace(/"/g, '&quot;');
+
+                    // Detect storefront URL
+                    let storeUrl = '';
+                    if (a.url) {
+                        storeUrl = a.url;
+                    } else if (a.notes && a.notes.includes('http')) {
+                        const m = a.notes.match(/https?:\/\/[^\s]+/);
+                        if (m) storeUrl = m[0];
+                    }
+
+                    // Clean notes display if URL is in notes
+                    const displayNotes = (a.notes || '').replace(/https?:\/\/[^\s]+/, '').replace(/\|\s*URL:?\s*/i, '').trim();
+
+                    grid.innerHTML += `
+                        <div class="portfolio-card glass-panel" style="display: flex; flex-direction: column; justify-content: space-between;">
+                            <div>
+                                <div class="p-card-header" style="display: flex; justify-content: space-between; align-items: flex-start; gap: 8px;">
+                                    <h4 style="font-size: 15px; word-break: break-word;">${icon} ${a.name}</h4>
+                                    <button class="delete-btn btn-delete-asset" data-id="${a.id}" data-name="${safeName}" title="Eliminar negocio/activo" style="font-size: 11px; padding: 2px 7px;">✕</button>
+                                </div>
+                                <p class="p-card-amount" style="margin-top: 8px;">${formatCurrency(parseFloat(a.value || 0))}</p>
+                                ${displayNotes ? `<p style="color:var(--text-muted); font-size: 12px; margin-top: 6px; line-height: 1.4;">${displayNotes}</p>` : ''}
+                            </div>
+                            <div style="margin-top: 14px; padding-top: 10px; border-top: 1px solid rgba(255,255,255,0.06); display: flex; gap: 8px; flex-wrap: wrap; align-items: center;">
+                                ${storeUrl ? `
+                                    <a href="${storeUrl}" target="_blank" rel="noopener noreferrer" class="btn-action-loan" style="text-decoration: none; display: inline-flex; align-items: center; gap: 4px; font-size: 11px; padding: 4px 9px; color: var(--mexican-gold); border-color: var(--mexican-gold);">
+                                        <span>Tienda en Vivo</span> ↗
+                                    </a>
+                                ` : ''}
+                                <button class="btn-action-loan btn-edit-asset-val" data-id="${a.id}" data-name="${safeName}" data-value="${a.value || 0}" style="font-size: 11px; padding: 4px 9px;">
+                                    ✏️ Valuación
+                                </button>
+                            </div>
+                        </div>`;
+                });
+            }
+        }
+
         // Delete Asset listener
         grid.querySelectorAll('.btn-delete-asset').forEach(btn => {
             btn.addEventListener('click', async (e) => {
@@ -566,9 +581,133 @@ const renderPortfolioFromAssets = (assets) => {
             });
         });
     }
-
-    renderPortfolioChart(chartLabels, chartData);
 };
+
+const updateConsolidatedNetWorth = () => {
+    if (!currentUser) return;
+
+    // 1. Inversiones Bursátiles Total Market Value
+    let investmentsTotal = 0;
+    if (investmentsHoldings && investmentsHoldings.length > 0) {
+        investmentsTotal = investmentsHoldings.reduce((sum, h) => sum + (parseFloat(h.marketValue) || 0), 0);
+    } else if (rawPortfolioAssets && rawPortfolioAssets.length > 0) {
+        const invItems = rawPortfolioAssets.filter(a => {
+            const cat = (a.category || '').toLowerCase().trim();
+            const type = (a.asset_type || '').toLowerCase().trim();
+            return cat === 'inversiones' || ['fibra', 'etf', 'stock', 'cetes'].includes(type);
+        });
+        investmentsTotal = invItems.reduce((sum, a) => sum + (parseFloat(a.value) || 0), 0);
+    }
+
+    // 2. Préstamos Total Saldo por Cobrar
+    let loansTotal = 0;
+    if (loansData && loansData.length > 0) {
+        loansTotal = loansData
+            .filter(l => l.status === 'active')
+            .reduce((sum, l) => sum + (parseFloat(l.current_balance) || 0), 0);
+    }
+
+    // 3. Inmuebles Total Property Value
+    let rentalsTotal = 0;
+    if (rentalsData && rentalsData.length > 0) {
+        rentalsTotal = rentalsData.reduce((sum, r) => sum + (parseFloat(r.property_value) || 0), 0);
+    }
+
+    // 4. Negocios, Cuentas y Liquidez
+    let businessTotal = 0;
+    let liquidTotal = 0;
+    let otrosTotal = 0;
+    const EXCLUDED_GRID_CATS = ['préstamos', 'prestamos', 'inversiones', 'inmuebles', 'rentas'];
+    const businessAndLiquidAssets = (rawPortfolioAssets || []).filter(a => {
+        if (!a.name || a.name.trim() === '') return false;
+        const cat = (a.category || '').toLowerCase().trim();
+        const type = (a.asset_type || '').toLowerCase().trim();
+        if (EXCLUDED_GRID_CATS.includes(cat)) return false;
+        if (['fibra', 'etf', 'stock', 'cetes'].includes(type)) return false;
+        return true;
+    });
+
+    businessAndLiquidAssets.forEach(a => {
+        const cat = (a.category || '').toLowerCase().trim();
+        const val = parseFloat(a.value || 0);
+        if (cat === 'negocios') businessTotal += val;
+        else if (cat === 'liquidez' || cat === 'ahorro') liquidTotal += val;
+        else otrosTotal += val;
+    });
+
+    const businessAndLiquidTotal = businessTotal + liquidTotal + otrosTotal;
+
+    // Consolidated Grand Total (Net Worth)
+    const grandNetWorth = investmentsTotal + loansTotal + rentalsTotal + businessAndLiquidTotal;
+
+    // Total distinct assets count
+    const totalAssetsCount = (investmentsHoldings?.length || 0) + 
+                            (loansData?.filter(l => l.status === 'active').length || 0) + 
+                            (rentalsData?.length || 0) + 
+                            businessAndLiquidAssets.length;
+
+    // Update Portfolio Total KPI
+    const portfolioTotalKpi = document.getElementById('portfolio-kpi-total');
+    if (portfolioTotalKpi) portfolioTotalKpi.textContent = formatCurrency(grandNetWorth);
+
+    const portfolioTotalLabel = document.getElementById('portfolio-total-label');
+    if (portfolioTotalLabel) {
+        portfolioTotalLabel.textContent = `Patrimonio Consolidado: ${formatCurrency(grandNetWorth)} (${totalAssetsCount} activos)`;
+    }
+
+    // Update Dashboard Net Worth KPI
+    const kpiSavings = document.getElementById('kpi-savings');
+    if (kpiSavings) kpiSavings.textContent = formatCurrency(grandNetWorth);
+
+    const kpiNetWorthSub = document.getElementById('kpi-networth-sub');
+    if (kpiNetWorthSub) {
+        kpiNetWorthSub.textContent = `Consolidado: ${formatCurrency(grandNetWorth)}`;
+    }
+
+    // Update Portfolio Quick-Bridge Banner
+    const invBannerVal = document.getElementById('portfolio-inv-banner-val');
+    if (invBannerVal) invBannerVal.textContent = formatCurrency(investmentsTotal);
+
+    const invBadgeCount = document.getElementById('portfolio-inv-badge-count');
+    if (invBadgeCount) {
+        const count = investmentsHoldings?.length || 0;
+        invBadgeCount.textContent = `${count} ${count === 1 ? 'posición' : 'posiciones'}`;
+    }
+
+    // Update Macro Asset Allocation Chart (Doughnut) in Dashboard
+    const macroLabels = [];
+    const macroData = [];
+
+    if (investmentsTotal > 0) {
+        macroLabels.push('Inversiones Bursátiles');
+        macroData.push(investmentsTotal);
+    }
+    if (loansTotal > 0) {
+        macroLabels.push('Préstamos por Cobrar');
+        macroData.push(loansTotal);
+    }
+    if (rentalsTotal > 0) {
+        macroLabels.push('Bienes Raíces');
+        macroData.push(rentalsTotal);
+    }
+    if (businessTotal > 0) {
+        macroLabels.push('Negocios / Storefronts');
+        macroData.push(businessTotal);
+    }
+    if (liquidTotal > 0) {
+        macroLabels.push('Liquidez & Ahorro');
+        macroData.push(liquidTotal);
+    }
+    if (otrosTotal > 0) {
+        macroLabels.push('Otros Activos');
+        macroData.push(otrosTotal);
+    }
+
+    if (macroLabels.length > 0) {
+        renderPortfolioChart(macroLabels, macroData);
+    }
+};
+
 
 const renderPortfolioChart = (labels, data) => {
     const canvas = document.getElementById('portfolioChart');
@@ -674,6 +813,7 @@ const loadSavingsData = async () => {
         await loadLoansData(safeAssets);
         await loadRentalsData(safeAssets);
         updatePortfolioPassiveKPIs();
+        updateConsolidatedNetWorth();
     } catch (err) {
         console.error('Error loading portfolio:', err);
         const grid = document.getElementById('portfolio-grid');
@@ -862,6 +1002,7 @@ const loadInvestmentsData = async () => {
 
         renderInvestmentsTable();
         updateInvestmentsKPIs();
+        updateConsolidatedNetWorth();
 
     } catch (err) {
         console.error('Error loading investments:', err);

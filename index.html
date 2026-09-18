@@ -151,9 +151,13 @@
                         <h3>Total Expenses</h3>
                         <p class="amount text-red" id="kpi-expenses">$0.00</p>
                     </div>
-                    <div class="kpi-card glass-panel highlight-bg">
-                        <h3>Savings & Assets</h3>
+                    <div class="kpi-card glass-panel highlight-bg" id="kpi-card-networth" style="cursor: pointer;" title="Ver desglose completo en Portafolio">
+                        <div style="display: flex; justify-content: space-between; align-items: center;">
+                            <h3>Patrimonio Neto Total</h3>
+                            <span style="font-size: 11px; color: var(--azteca-gold);">Ver Portafolio →</span>
+                        </div>
                         <p class="amount" id="kpi-savings">$0.00</p>
+                        <span class="trend" id="kpi-networth-sub">Consolidado en Portafolio</span>
                     </div>
                 </div>
 
@@ -265,6 +269,26 @@
                     </div>
                 </div>
 
+                <!-- Interactive Quick-Bridge: Inversiones Bursátiles & CETES -->
+                <div id="portfolio-inv-banner" class="glass-panel" style="margin-top: 20px; padding: 14px 20px; border-left: 3px solid var(--azteca-green-vibrant); display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 14px; background: rgba(0, 168, 89, 0.04);">
+                    <div style="display: flex; align-items: center; gap: 12px;">
+                        <span style="font-size: 24px;">📈</span>
+                        <div>
+                            <h4 style="margin: 0; font-size: 15px; color: var(--text-on-dark); display: flex; align-items: center; gap: 8px;">
+                                Inversiones Bursátiles & CETES
+                                <span id="portfolio-inv-badge-count" style="font-size: 11px; padding: 2px 8px; border-radius: 12px; background: rgba(0,168,89,0.15); color: var(--azteca-green-vibrant); font-family: var(--font-mono);">0 posiciones</span>
+                            </h4>
+                            <p id="portfolio-inv-banner-sub" style="margin: 4px 0 0 0; font-size: 13px; color: var(--text-secondary);">
+                                Valor de Mercado: <strong id="portfolio-inv-banner-val" style="color: var(--text-on-dark); font-family: var(--font-mono);">$0.00</strong> — Sincronizado en tiempo real sin duplicidad.
+                            </p>
+                        </div>
+                    </div>
+                    <button class="btn btn-secondary" id="btn-jump-to-investments" style="padding: 8px 16px; font-size: 12px; display: flex; align-items: center; gap: 6px;">
+                        <span>Abrir Terminal Bursátil</span>
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="9 18 15 12 9 6"/></svg>
+                    </button>
+                </div>
+
                 <!-- SECTION 1: Personal / Business Loans with Interest -->
                 <div style="margin-top: 32px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px;">
                     <div>
@@ -313,10 +337,10 @@
                 <div style="margin-top: 36px; margin-bottom: 14px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px;">
                     <div>
                         <h3 style="font-family: var(--font-heading); font-size: 19px; color: var(--text-on-dark); display: flex; align-items: center; gap: 8px;">
-                            <span>🛒</span> Negocios, Cuentas y Activos del Hub
+                            <span>🛒</span> Negocios, Cuentas y Liquidez
                         </h3>
                         <p style="color: var(--text-secondary); font-size: 13px; margin-top: 2px;">
-                            Activos comerciales de storefronts, comercio, ahorro y liquidez operativa.
+                            Comercio electrónico, marcas del Hub, cuentas bancarias operativas y fondos de liquidez.
                         </p>
                     </div>
                     <button id="btn-open-add-asset" class="btn btn-primary" style="padding: 8px 16px; font-size: 13px; display: flex; align-items: center; gap: 6px;">
