@@ -1,0 +1,34 @@
+name: 24/7 Market Sync (Banxico & BMV)
+
+on:
+  schedule:
+    # 09:00 AM CST (Lunes a Viernes - Apertura de Mercado) = 15:00 UTC
+    - cron: '0 15 * * 1-5'
+    # 12:00 PM CST (Lunes a Viernes - Publicación Dólar FIX Banxico) = 18:00 UTC
+    - cron: '0 18 * * 1-5'
+    # 11:30 AM CST (Martes - Resultados Subasta Semanal CETES Banxico) = 17:30 UTC
+    - cron: '30 17 * * 2'
+  workflow_dispatch: # Permite ejecución manual bajo demanda desde GitHub Actions
+
+jobs:
+  sync-market-data:
+    name: Sincronizar Cotizaciones Oficiales
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - name: Checkout Código del Repositorio
+        uses: actions/checkout@v4
+
+      - name: Configurar Entorno Node.js 20
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Ejecutar Sincronizador de Mercados UCP
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL || 'https://samwziooqhzohpszyddw.supabase.co' }}
+          SUPABASE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY || secrets.SUPABASE_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InNhbXd6aW9vcWh6b2hwc3p5ZGR3Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODEwNDg1MzAsImV4cCI6MjA5NjYyNDUzMH0.EFmRsIARd_oh3tn_eB40J25CRpEU-v91phjwChlGnuw' }}
+          BANXICO_TOKEN: ${{ secrets.BANXICO_TOKEN }}
+        run: |
+          node scripts/sync_market_quotes.js

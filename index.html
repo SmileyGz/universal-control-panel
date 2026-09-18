@@ -13,8 +13,8 @@
     <!-- Chart.js -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 
-    <!-- Custom CSS (v4.5 cache bust - FASE 3 Institutional Sidebar) -->
-    <link rel="stylesheet" href="styles.css?v=4.5">
+    <!-- Custom CSS (v4.6 cache bust - FASE 3 Live 24/7 Market Sync) -->
+    <link rel="stylesheet" href="styles.css?v=4.6">
 
     <!-- Supabase JS Client -->
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
@@ -78,15 +78,15 @@
                 </div>
                 <div class="macro-row">
                     <span class="macro-label">CETES 28D:</span>
-                    <span class="macro-val text-gold">10.75%</span>
+                    <span class="macro-val text-gold" id="sidebar-macro-cetes">10.75%</span>
                 </div>
                 <div class="macro-row">
                     <span class="macro-label">USD / MXN:</span>
-                    <span class="macro-val">$18.35</span>
+                    <span class="macro-val" id="sidebar-macro-usd">$18.35</span>
                 </div>
                 <div class="macro-row">
-                    <span class="macro-label">UDIs / INPC:</span>
-                    <span class="macro-val">4.50%</span>
+                    <span class="macro-label">UDIs / Val:</span>
+                    <span class="macro-val" id="sidebar-macro-udi">8.1924</span>
                 </div>
             </div>
 
@@ -126,7 +126,7 @@
                     <span class="ticker-pulse"></span> MERCADOS MX
                 </div>
                 <div class="ticker-viewport" style="display: flex; flex: 1; overflow: hidden; position: relative;">
-                    <div class="ticker-track" style="display: inline-flex; align-items: center; gap: 28px; white-space: nowrap; width: max-content; flex-shrink: 0;">
+                    <div class="ticker-track" id="ticker-track" style="display: inline-flex; align-items: center; gap: 28px; white-space: nowrap; width: max-content; flex-shrink: 0;">
                         <div class="ticker-item"><span class="ticker-sym">USD/MXN</span><span class="ticker-price">$18.35</span><span class="ticker-badge-chg up">-0.42% ▼</span></div>
                         <div class="ticker-item"><span class="ticker-sym">CETES 28D</span><span class="ticker-price gold">10.75%</span><span class="ticker-tag">Tasa Fija</span></div>
                         <div class="ticker-item"><span class="ticker-sym">S&P/BMV IPC</span><span class="ticker-price">52,890.15</span><span class="ticker-badge-chg up">+0.84% ▲</span></div>
@@ -555,6 +555,10 @@
 
                     <div style="display: flex; gap: 10px; align-items: center; flex-wrap: wrap;">
                         <input type="text" id="inv-search" placeholder="Buscar ticker o nombre..." class="glass-input" style="width: 200px;">
+                        <button id="btn-sync-live-quotes" class="btn btn-secondary" style="padding: 9px 13px; font-size: 13px; display: flex; align-items: center; gap: 6px; border-color: rgba(0, 168, 89, 0.4); color: var(--azteca-green-vibrant);" title="Sincronizar cotizaciones en vivo desde Banxico y BMV">
+                            <span class="live-indicator" style="width: 7px; height: 7px;"></span>
+                            <span>Cotizaciones VIVO</span>
+                        </button>
                         <button id="btn-open-snowball" class="btn btn-secondary" style="padding: 9px 14px; font-size: 13px; display: flex; align-items: center; gap: 6px; border-color: rgba(255, 199, 44, 0.4); color: var(--azteca-gold);" title="Simulador de Interés Compuesto e Inflación Banxico">
                             <span>❄️</span>
                             <span>Bola de Nieve</span>
@@ -1407,6 +1411,6 @@
 
     <!-- Custom Logic -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
-    <script src="app.js?v=20260918_v18"></script>
+    <script src="app.js?v=20260918_v19"></script>
 </body>
 </html>

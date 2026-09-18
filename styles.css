@@ -1700,6 +1700,22 @@ select.glass-input option {
     border: 1px solid rgba(255, 255, 255, 0.08);
 }
 
+.badge-live-quote {
+    display: inline-flex;
+    align-items: center;
+    gap: 3px;
+    font-size: 9px;
+    font-weight: 700;
+    color: var(--azteca-green-vibrant);
+    background: rgba(0, 168, 89, 0.14);
+    border: 1px solid rgba(0, 168, 89, 0.3);
+    border-radius: 3px;
+    padding: 1px 4px;
+    font-family: var(--font-mono);
+    text-transform: uppercase;
+    letter-spacing: 0.3px;
+}
+
 /* Micro-Barra de Rendimiento Costo vs Mercado */
 .price-meter-container {
     display: flex;

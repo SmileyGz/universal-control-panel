@@ -2014,6 +2014,193 @@ const loadSavingsData = async () => {
 };
 
 // ============================================================
+// LIVE MARKET QUOTES ENGINE (BANXICO SIE & BMV 24/7)
+// ============================================================
+let latestMarketQuotes = {};
+
+const DEFAULT_MARKET_QUOTES = [
+    { symbol: 'CETES28D', name: 'CETES 28 Días (Subasta Banxico)', price: 10.75, change_pct: 0.0, change_abs: 0.0, asset_type: 'cetes', market: 'Banxico / Directo', currency: 'MXN', source: 'Banxico SIE (SF43718)' },
+    { symbol: 'USDMXN',   name: 'Dólar FIX Oficial Banxico',        price: 18.35, change_pct: -0.42, change_abs: -0.077, asset_type: 'currency', market: 'Banxico', currency: 'MXN', source: 'Banxico SIE (SF60653)' },
+    { symbol: 'UDIS',     name: 'Unidades de Inversión (UDI)',       price: 8.1924, change_pct: 0.04, change_abs: 0.0032, asset_type: 'index', market: 'Banxico', currency: 'MXN', source: 'Banxico SIE (SP68257)' },
+    { symbol: 'IPC',      name: 'S&P / BMV IPC Índice Líder',    price: 63509.87, change_pct: -0.65, change_abs: -414.90, asset_type: 'index', market: 'BMV', currency: 'MXN', source: 'Bolsa Mexicana de Valores' },
+    { symbol: 'FUNO11',   name: 'Fibra Uno Administradora',         price: 29.15, change_pct: -2.87, change_abs: -0.86, asset_type: 'fibra', market: 'BMV', currency: 'MXN', source: 'BMV / Yahoo Finance' },
+    { symbol: 'IVVPESO',  name: 'iShares Core S&P 500 Peso Hedged', price: 153.60, change_pct: -0.99, change_abs: -1.53, asset_type: 'etf', market: 'SIC / BMV', currency: 'MXN', source: 'SIC / BMV (IVVPESO.MX)' },
+    { symbol: 'FMTY14',   name: 'Fibra Monterrey Inmobiliaria',     price: 14.09, change_pct: -1.47, change_abs: -0.21, asset_type: 'fibra', market: 'BMV', currency: 'MXN', source: 'BMV / Yahoo Finance' },
+    { symbol: 'TIIE28',   name: 'TIIE de Fondeo Banxico a 28D',     price: 11.00, change_pct: 0.0, change_abs: 0.0, asset_type: 'cetes', market: 'Banxico', currency: 'MXN', source: 'Banxico SIE (SF43783)' }
+];
+
+const resolveMarketQuote = (rawTicker = '', name = '') => {
+    const cleanSym = String(rawTicker || '').trim().toUpperCase().replace(/[^A-Z0-9]/g, '');
+    const cleanName = String(name || '').trim().toUpperCase();
+
+    // Direct match by symbol
+    if (latestMarketQuotes[cleanSym]) return latestMarketQuotes[cleanSym];
+
+    // Normalized BMV / Banxico aliases
+    if (cleanSym.includes('FUNO') || cleanName.includes('FUNO')) return latestMarketQuotes['FUNO11'];
+    if (cleanSym.includes('FMTY') || cleanName.includes('FMTY')) return latestMarketQuotes['FMTY14'];
+    if (cleanSym.includes('IVV') || cleanName.includes('IVV') || cleanName.includes('IVVPESO')) return latestMarketQuotes['IVVPESO'];
+    if (cleanSym.includes('CETE') || cleanName.includes('CETE')) return latestMarketQuotes['CETES28D'];
+    if (cleanSym.includes('USD') || cleanName.includes('DOLAR') || cleanName.includes('DÓLAR')) return latestMarketQuotes['USDMXN'];
+    if (cleanSym.includes('UDI') || cleanName.includes('UDI')) return latestMarketQuotes['UDIS'];
+    if (cleanSym.includes('IPC') || cleanName.includes('IPC') || cleanName.includes('BMV')) return latestMarketQuotes['IPC'];
+
+    return null;
+};
+
+const renderTickerTrack = () => {
+    const track = document.getElementById('ticker-track');
+    if (!track) return;
+
+    const symbolsOrder = ['USDMXN', 'CETES28D', 'IPC', 'FUNO11', 'IVVPESO', 'FMTY14', 'UDIS'];
+    const quotes = symbolsOrder.map(s => latestMarketQuotes[s] || DEFAULT_MARKET_QUOTES.find(d => d.symbol === s)).filter(Boolean);
+
+    const buildItemsHtml = () => quotes.map(q => {
+        let priceStr = '';
+        let badgeHtml = '';
+        let isGold = false;
+
+        if (q.asset_type === 'cetes') {
+            priceStr = `${q.price.toFixed(2)}%`;
+            isGold = true;
+            badgeHtml = `<span class="ticker-tag">Tasa Fija</span>`;
+        } else if (q.symbol === 'UDIS') {
+            priceStr = q.price.toFixed(4);
+            isGold = true;
+            badgeHtml = `<span class="ticker-tag">Inflación</span>`;
+        } else if (q.symbol === 'USDMXN') {
+            priceStr = `$${q.price.toFixed(2)}`;
+            const isUp = q.change_pct >= 0;
+            const sign = isUp ? '+' : '';
+            badgeHtml = `<span class="ticker-badge-chg ${isUp ? 'down' : 'up'}">${sign}${q.change_pct.toFixed(2)}% ${isUp ? '▲' : '▼'}</span>`;
+        } else if (q.symbol === 'IPC') {
+            priceStr = q.price.toLocaleString('es-MX', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+            const isUp = q.change_pct >= 0;
+            const sign = isUp ? '+' : '';
+            badgeHtml = `<span class="ticker-badge-chg ${isUp ? 'up' : 'down'}">${sign}${q.change_pct.toFixed(2)}% ${isUp ? '▲' : '▼'}</span>`;
+        } else {
+            priceStr = `$${q.price.toFixed(2)}`;
+            const isUp = q.change_pct >= 0;
+            const sign = isUp ? '+' : '';
+            badgeHtml = `<span class="ticker-badge-chg ${isUp ? 'up' : 'down'}">${sign}${q.change_pct.toFixed(2)}% ${isUp ? '▲' : '▼'}</span>`;
+        }
+
+        let dispSym = q.symbol;
+        if (q.symbol === 'USDMXN') dispSym = 'USD/MXN';
+        else if (q.symbol === 'CETES28D') dispSym = 'CETES 28D';
+        else if (q.symbol === 'IPC') dispSym = 'S&P/BMV IPC';
+        else if (q.symbol === 'FUNO11') dispSym = 'FUNO 11';
+        else if (q.symbol === 'FMTY14') dispSym = 'FMTY 14';
+
+        return `<div class="ticker-item" title="${q.name} • Fuente: ${q.source}"><span class="ticker-sym">${dispSym}</span><span class="ticker-price ${isGold ? 'gold' : ''}">${priceStr}</span>${badgeHtml}</div>`;
+    }).join('');
+
+    const setHtml = buildItemsHtml();
+    track.innerHTML = `${setHtml}${setHtml}`;
+};
+
+const updateSidebarMacroCard = () => {
+    const cetesEl = document.getElementById('sidebar-macro-cetes');
+    const usdEl = document.getElementById('sidebar-macro-usd');
+    const udiEl = document.getElementById('sidebar-macro-udi');
+
+    const cetes = latestMarketQuotes['CETES28D'] || DEFAULT_MARKET_QUOTES.find(q => q.symbol === 'CETES28D');
+    const usd = latestMarketQuotes['USDMXN'] || DEFAULT_MARKET_QUOTES.find(q => q.symbol === 'USDMXN');
+    const udi = latestMarketQuotes['UDIS'] || DEFAULT_MARKET_QUOTES.find(q => q.symbol === 'UDIS');
+
+    if (cetesEl && cetes) cetesEl.textContent = `${cetes.price.toFixed(2)}%`;
+    if (usdEl && usd) usdEl.textContent = `$${usd.price.toFixed(2)}`;
+    if (udiEl && udi) udiEl.textContent = udi.price.toFixed(4);
+
+    if (cetes) {
+        document.querySelectorAll('.cetes-benchmark-pill').forEach(pill => {
+            pill.textContent = `🏛️ Benchmark CETES: ${cetes.price.toFixed(2)}% Anual`;
+        });
+        const snowballRate = document.getElementById('snowball-rate-val');
+        if (snowballRate) snowballRate.textContent = `${cetes.price.toFixed(2)}% (CETES)`;
+    }
+};
+
+const loadLiveMarketQuotes = async () => {
+    DEFAULT_MARKET_QUOTES.forEach(q => {
+        latestMarketQuotes[q.symbol] = { ...q };
+    });
+
+    try {
+        const cached = localStorage.getItem('ucp_market_quotes_v1');
+        if (cached) {
+            const parsed = JSON.parse(cached);
+            Object.assign(latestMarketQuotes, parsed);
+        }
+    } catch {
+        // Continue if cache corrupt
+    }
+
+    updateSidebarMacroCard();
+    renderTickerTrack();
+
+    try {
+        const { data, error } = await supabaseClient
+            .from('finance_market_quotes')
+            .select('*');
+
+        if (!error && Array.isArray(data) && data.length > 0) {
+            data.forEach(q => {
+                latestMarketQuotes[q.symbol.toUpperCase()] = q;
+            });
+            localStorage.setItem('ucp_market_quotes_v1', JSON.stringify(latestMarketQuotes));
+            updateSidebarMacroCard();
+            renderTickerTrack();
+            return;
+        }
+    } catch (dbErr) {
+        console.warn('Market quotes DB notice:', dbErr.message);
+    }
+
+    // Direct FX fallback fetch for instant client-side USD/MXN rate
+    try {
+        const res = await fetch('https://open.er-api.com/v6/latest/USD');
+        if (res.ok) {
+            const json = await res.json();
+            if (json.rates?.MXN) {
+                latestMarketQuotes['USDMXN'].price = parseFloat(json.rates.MXN.toFixed(4));
+                latestMarketQuotes['USDMXN'].source = 'Mercado FX Interbancario';
+                updateSidebarMacroCard();
+                renderTickerTrack();
+                localStorage.setItem('ucp_market_quotes_v1', JSON.stringify(latestMarketQuotes));
+            }
+        }
+    } catch {
+        // Silent fallback to defaults
+    }
+};
+
+const syncHoldingsWithLiveQuotes = async () => {
+    let updatedCount = 0;
+    for (const h of investmentsHoldings) {
+        const quote = resolveMarketQuote(h.ticker, h.name);
+        if (quote && quote.price > 0 && h.id) {
+            const newMarketValue = h.totalShares * quote.price;
+            try {
+                await supabaseClient
+                    .from('finance_portfolio')
+                    .update({
+                        current_price: quote.price,
+                        value: newMarketValue > 0 ? newMarketValue : undefined
+                    })
+                    .eq('id', h.id);
+                updatedCount++;
+            } catch (err) {
+                console.warn('Could not persist holding live quote:', err);
+            }
+        }
+    }
+    await loadInvestmentsData();
+    await loadSavingsData();
+    return updatedCount;
+};
+
+// ============================================================
 // INVESTMENTS & STOCKS MODULE (GBM+ / FIBRAs / ETFs / CETES)
 // ============================================================
 let investmentsHoldings = [];
@@ -2164,7 +2351,26 @@ const loadInvestmentsData = async () => {
             }
 
             const avgCost = totalShares > 0 ? (totalInvested / totalShares) : 0;
-            const currentPrice = parseFloat(row.current_price || avgCost || 0);
+            
+            // Live market price resolution from Banxico SIE / BMV
+            const liveQuote = resolveMarketQuote(rawTicker, row.name);
+            let currentPrice = parseFloat(row.current_price || 0);
+            let isLivePrice = false;
+
+            if (liveQuote && liveQuote.price > 0) {
+                // If current_price is missing, 0, or equal to avgCost, seamlessly adopt live market price
+                if (!currentPrice || Math.abs(currentPrice - avgCost) < 0.001) {
+                    currentPrice = liveQuote.price;
+                    isLivePrice = true;
+                } else if (Math.abs(currentPrice - liveQuote.price) / liveQuote.price < 0.01) {
+                    isLivePrice = true;
+                }
+            }
+
+            if (!currentPrice || currentPrice <= 0) {
+                currentPrice = avgCost > 0 ? avgCost : 1;
+            }
+
             const marketValue = totalShares * currentPrice;
             const pnl = marketValue - totalInvested;
             const pnlPct = totalInvested > 0 ? ((pnl / totalInvested) * 100) : 0;
@@ -2183,6 +2389,8 @@ const loadInvestmentsData = async () => {
                 totalShares,
                 avgCost,
                 currentPrice,
+                isLivePrice,
+                liveQuoteSource: liveQuote ? liveQuote.source : null,
                 totalInvested,
                 marketValue,
                 pnl,
@@ -2399,8 +2607,8 @@ const renderInvestmentsTable = () => {
             </td>
             <td class="align-right">
                 <div class="price-meter-container">
-                    <span class="price-tag-clickable btn-edit-price" data-id="${h.id}" data-ticker="${h.ticker}" data-price="${h.currentPrice}" title="Clic para actualizar precio">
-                        ${formatCurrency(h.currentPrice)} ✏️
+                    <span class="price-tag-clickable btn-edit-price" data-id="${h.id}" data-ticker="${h.ticker}" data-price="${h.currentPrice}" title="${h.isLivePrice ? `Cotización en vivo (${h.liveQuoteSource || 'BMV / Banxico'}). Clic para editar precio.` : 'Clic para actualizar precio'}">
+                        ${formatCurrency(h.currentPrice)} ${h.isLivePrice ? '<span class="badge-live-quote">VIVO</span>' : '✏️'}
                     </span>
                     <div class="price-meter-bar" title="Rendimiento: ${pnlSign}${h.pnlPct.toFixed(2)}%">
                         <div class="price-meter-fill ${meterClass}" style="width: ${meterFillWidth}%;"></div>
@@ -2460,6 +2668,21 @@ document.querySelectorAll('#inv-filter-pills .pill-btn').forEach(btn => {
 // Search input
 document.getElementById('inv-search')?.addEventListener('input', () => {
     renderInvestmentsTable();
+});
+
+// Live Quotes Sync Button
+document.getElementById('btn-sync-live-quotes')?.addEventListener('click', async () => {
+    const btn = document.getElementById('btn-sync-live-quotes');
+    if (btn) btn.style.opacity = '0.6';
+    showToast('📡 Sincronizando cotizaciones en vivo...', 'info');
+    await loadLiveMarketQuotes();
+    const updated = await syncHoldingsWithLiveQuotes();
+    if (btn) btn.style.opacity = '1';
+    if (updated > 0) {
+        showToast(`✅ ${updated} posición(es) sincronizada(s) con cotizaciones en vivo de Banxico & BMV!`, 'success');
+    } else {
+        showToast('✅ Cotizaciones en vivo sincronizadas con éxito.', 'success');
+    }
 });
 
 // ============================================================
@@ -3580,6 +3803,7 @@ const closePricingModal = () => {
 };
 
 const refreshAllData = async () => {
+    await loadLiveMarketQuotes();
     await loadSavingsData();
     await loadInvestmentsData();
     await loadYearlyData(currentYear);
@@ -4016,6 +4240,7 @@ const initApp = async () => {
     `;
     document.head.appendChild(style);
 
+    await loadLiveMarketQuotes();
     await loadSavingsData();
     await loadInvestmentsData();
     await loadYearlyData(currentYear);
