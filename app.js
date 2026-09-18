@@ -702,20 +702,22 @@ const loadInvestmentsData = async () => {
         if (invEl) invEl.textContent = '$0.00';
         const countEl = document.getElementById('inv-kpi-count');
         if (countEl) countEl.textContent = '🔒 Protegido';
-        const valEl = document.getElementById('inv-kpi-value');
-        if (valEl) valEl.textContent = '$0.00';
-        const gainEl = document.getElementById('inv-kpi-gain-loss');
-        if (gainEl) gainEl.textContent = '$0.00 (0.00%)';
+        const marketEl = document.getElementById('inv-kpi-market');
+        if (marketEl) marketEl.textContent = '$0.00';
+        const pnlEl = document.getElementById('inv-kpi-pnl');
+        if (pnlEl) pnlEl.textContent = '$0.00';
+        const pnlPctEl = document.getElementById('inv-kpi-pnl-pct');
+        if (pnlPctEl) pnlPctEl.textContent = '0.00%';
 
-        const tbody = document.getElementById('inv-holdings-body');
+        const tbody = document.getElementById('investments-body');
         if (tbody) {
             tbody.innerHTML = `
                 <tr>
-                    <td colspan="7" style="text-align: center; padding: 70px 20px;">
-                        <div style="font-size: 40px; margin-bottom: 12px;">🔒</div>
+                    <td colspan="9" style="text-align: center; padding: 60px 20px;">
+                        <div style="font-size: 38px; margin-bottom: 12px;">🔒</div>
                         <h4 style="color: var(--text-on-dark); font-size: 17px; margin-bottom: 6px;">Portafolio Bursátil Privado</h4>
-                        <p style="color: var(--text-secondary); font-size: 13px; max-width: 440px; margin: 0 auto 18px auto; line-height: 1.5;">
-                            Tus posiciones de CETES, FIBRAs, ETFs y acciones están cifradas. Inicia sesión para ver tu rendimiento.
+                        <p style="color: var(--text-secondary); font-size: 13px; max-width: 460px; margin: 0 auto 18px auto; line-height: 1.5;">
+                            Tus posiciones de CETES, FIBRAs, ETFs y acciones están cifradas. Inicia sesión con tu cuenta para visualizar y gestionar tus inversiones.
                         </p>
                         <button class="btn btn-primary" onclick="openAuthModal('login')">
                             Iniciar Sesión
@@ -727,13 +729,18 @@ const loadInvestmentsData = async () => {
     }
 
     try {
-        // 1. Fetch investment holdings from finance_portfolio
-        const { data: portfolioRows, error: pError } = await supabaseClient
+        // 1. Fetch investment holdings from finance_portfolio safely
+        const { data: allRows, error: pError } = await supabaseClient
             .from('finance_portfolio')
-            .select('*')
-            .or('category.eq.Inversiones,asset_type.neq.null');
+            .select('*');
 
         if (pError) throw pError;
+
+        // Filter for investments safely in JS (works even if custom columns aren't migrated yet)
+        const portfolioRows = (allRows || []).filter(row => {
+            const cat = (row.category || '').toLowerCase();
+            return cat === 'inversiones' || Boolean(row.asset_type) || Boolean(row.ticker);
+        });
 
         // 2. Fetch lots from finance_investment_lots (graceful fallback if table not yet created)
         let lots = [];
@@ -749,7 +756,7 @@ const loadInvestmentsData = async () => {
 
         allInvestmentLots = lots;
 
-        // 3. Process holdings with aggregated lot calculations
+        // 3. Process holdings with aggregated lot calculations and smart classification
         investmentsHoldings = (portfolioRows || []).map(row => {
             const rowLots = lots.filter(l => 
                 (l.portfolio_id && l.portfolio_id == row.id) || 
@@ -780,11 +787,23 @@ const loadInvestmentsData = async () => {
             const pnl = marketValue - totalInvested;
             const pnlPct = totalInvested > 0 ? ((pnl / totalInvested) * 100) : 0;
 
+            // Smart extraction of ticker and asset type if legacy row
+            const rawTicker = (row.ticker || row.name.split(' ')[0] || 'INV').toUpperCase();
+            let resolvedType = (row.asset_type || '').toLowerCase();
+            if (!resolvedType || resolvedType === 'otro') {
+                const text = `${row.name} ${row.notes || ''}`.toLowerCase();
+                if (text.includes('fibra') || text.includes('funo') || text.includes('fmt') || text.includes('terrafina')) resolvedType = 'fibra';
+                else if (text.includes('etf') || text.includes('ivv') || text.includes('voo') || text.includes('spy')) resolvedType = 'etf';
+                else if (text.includes('cete') || text.includes('bono') || text.includes('udibono')) resolvedType = 'cetes';
+                else if (text.includes('accion') || text.includes('acción') || text.includes('stock')) resolvedType = 'stock';
+                else resolvedType = 'otro';
+            }
+
             return {
                 id: row.id,
-                ticker: (row.ticker || row.name.split(' ')[0]).toUpperCase(),
+                ticker: rawTicker,
                 name: row.name,
-                asset_type: (row.asset_type || 'otro').toLowerCase(),
+                asset_type: resolvedType,
                 broker: rowLots[0]?.broker || 'GBM+',
                 totalShares,
                 avgCost,
@@ -810,7 +829,7 @@ const loadInvestmentsData = async () => {
                     <td colspan="9" class="text-center" style="padding: 24px;">
                         <p class="text-red">Aviso: No se pudieron cargar las inversiones bursátiles.</p>
                         <p style="font-size: 12px; color: var(--text-muted); margin-top: 6px;">
-                            Recuerda ejecutar el archivo <code>supabase_investments_schema.sql</code> en tu Supabase SQL Editor.
+                            ${err.message || 'Error de conexión con Supabase.'}
                         </p>
                     </td>
                 </tr>`;
@@ -879,7 +898,16 @@ const renderInvestmentsTable = () => {
     });
 
     if (filtered.length === 0) {
-        tbody.innerHTML = `<tr><td colspan="9" class="text-center" style="padding: 32px; color: var(--text-muted);">No hay inversiones que coincidan con los filtros. Haz clic en "+ Registrar Compra".</td></tr>`;
+        tbody.innerHTML = `
+            <tr>
+                <td colspan="9" class="text-center" style="padding: 44px 20px;">
+                    <div style="font-size: 36px; margin-bottom: 8px;">📈</div>
+                    <h4 style="color: var(--text-on-dark); font-size: 16px; margin-bottom: 6px;">Sin posiciones de inversión registradas</h4>
+                    <p style="font-size: 13px; color: var(--text-secondary); max-width: 440px; margin: 0 auto 16px auto; line-height: 1.5;">
+                        Comienza a dar seguimiento a tus acciones, ETFs, FIBRAs o CETES haciendo clic en el botón <strong>"+ Registrar Compra"</strong>.
+                    </p>
+                </td>
+            </tr>`;
         return;
     }
 
@@ -1046,25 +1074,51 @@ document.getElementById('inv-form')?.addEventListener('submit', async (e) => {
                 icon: icon
             };
 
+            let insertedId = null;
             const { data: inserted, error: insertErr } = await supabaseClient
                 .from('finance_portfolio')
                 .insert([withUser(newPortfolioRow)])
                 .select();
 
-            if (insertErr) throw insertErr;
-            if (inserted && inserted.length > 0) {
-                holdingId = inserted[0].id;
+            if (insertErr) {
+                console.warn('Enriched insert notice, trying basic schema:', insertErr);
+                // Fallback for basic schema without custom trading columns
+                const fallbackRow = {
+                    name: `${ticker} - ${name}`,
+                    category: 'Inversiones',
+                    value: shares * currentPrice,
+                    notes: `Ticker: ${ticker} | Tipo: ${type.toUpperCase()} | Broker: ${broker} | ${notes}`,
+                    icon: icon
+                };
+                const { data: fallbackInserted, error: fallbackErr } = await supabaseClient
+                    .from('finance_portfolio')
+                    .insert([withUser(fallbackRow)])
+                    .select();
+
+                if (fallbackErr) throw fallbackErr;
+                if (fallbackInserted && fallbackInserted.length > 0) {
+                    insertedId = fallbackInserted[0].id;
+                }
+            } else if (inserted && inserted.length > 0) {
+                insertedId = inserted[0].id;
             }
+
+            holdingId = insertedId;
         } else {
-            // Update holding current price and metadata
-            await supabaseClient
-                .from('finance_portfolio')
-                .update({
-                    ticker: ticker,
-                    asset_type: type,
-                    current_price: currentPrice
-                })
-                .eq('id', holdingId);
+            // Update holding current price and metadata safely
+            try {
+                await supabaseClient
+                    .from('finance_portfolio')
+                    .update({
+                        ticker: ticker,
+                        asset_type: type,
+                        current_price: currentPrice,
+                        value: shares * currentPrice
+                    })
+                    .eq('id', holdingId);
+            } catch (updErr) {
+                console.warn('Metadata update notice:', updErr);
+            }
         }
 
         // 2. Insert lot into finance_investment_lots
