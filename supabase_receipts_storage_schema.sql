@@ -10,12 +10,10 @@ ALTER TABLE finance_transactions
 ADD COLUMN IF NOT EXISTS attachments JSONB DEFAULT '[]'::jsonb,
 ADD COLUMN IF NOT EXISTS is_deductible BOOLEAN DEFAULT false;
 
--- Comentarios explicativos en el esquema
 COMMENT ON COLUMN finance_transactions.attachments IS 'Array JSON con la metadata y URLs en Supabase Storage de tickets, fotos, PDFs y XMLs';
 COMMENT ON COLUMN finance_transactions.is_deductible IS 'Indica si el gasto cuenta con factura fiscal (CFDI) y es deducible de impuestos';
 
 -- 2. CREAR EL BUCKET DE ALMACENAMIENTO EN SUPABASE STORAGE
--- Se configura como público para permitir la carga y previsualización ágil de comprobantes
 INSERT INTO storage.buckets (id, name, public, file_size_limit, allowed_mime_types)
 VALUES (
     'expense-receipts',
@@ -29,24 +27,19 @@ ON CONFLICT (id) DO UPDATE SET
     file_size_limit = 10485760,
     allowed_mime_types = ARRAY['image/jpeg', 'image/png', 'image/webp', 'application/pdf', 'text/xml', 'application/xml'];
 
--- 3. POLÍTICAS DE SEGURIDAD ROW-LEVEL SECURITY (RLS) PARA STORAGE.OBJECTS
+-- 3. POLÍTICAS DE SEGURIDAD RLS PARA STORAGE.OBJECTS (storage.objects ya tiene RLS activo de fábrica)
 
--- Habilitar RLS en storage.objects si no está habilitado
-ALTER TABLE storage.objects ENABLE ROW LEVEL SECURITY;
-
--- Limpiar políticas previas si existían
 DROP POLICY IF EXISTS "Public read access for expense-receipts" ON storage.objects;
 DROP POLICY IF EXISTS "Allow authenticated uploads to expense-receipts" ON storage.objects;
-DROP POLICY IF EXISTS "Allow anon uploads to expense-receipts" ON storage.objects;
 DROP POLICY IF EXISTS "Allow owners to update expense-receipts" ON storage.objects;
 DROP POLICY IF EXISTS "Allow owners to delete expense-receipts" ON storage.objects;
 
--- A) LECTURA PÚBLICA: Permite cargar y mostrar las imágenes y PDFs de comprobantes en el panel
+-- A) LECTURA PÚBLICA: Permite visualizar las fotos y PDFs de comprobantes
 CREATE POLICY "Public read access for expense-receipts"
 ON storage.objects FOR SELECT
 USING (bucket_id = 'expense-receipts');
 
--- B) SUBIDA DE ARCHIVOS (INSERT): Permite tanto a usuarios autenticados como a sesiones activas subir tickets
+-- B) SUBIDA DE ARCHIVOS (INSERT): Permite subir tickets y comprobantes
 CREATE POLICY "Allow authenticated uploads to expense-receipts"
 ON storage.objects FOR INSERT
 TO authenticated, anon
