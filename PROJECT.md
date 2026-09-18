@@ -5,8 +5,9 @@ The application relies on Supabase as the primary database backend, containing t
 
 1. **`finance_transactions`**
    - **Purpose:** Stores individual financial records across all years.
-   - **Columns:** `id`, `date`, `description`, `amount`, `type` ('income', 'expense', 'portfolio'), `category`, `notes`.
-   - **Views:** Feeds the Dashboard KPIs/charts and the Transactions view.
+   - **Columns:** `id`, `date`, `description`, `amount`, `type` ('income', 'expense', 'portfolio'), `category`, `notes`, `attachments` (JSONB array of files in Supabase Storage), `is_deductible` (BOOLEAN).
+   - **Storage Bucket:** `expense-receipts` (Supabase Storage bucket with client-side image compression and public CDN URLs).
+   - **Views:** Feeds the Dashboard KPIs/charts, the Transactions view, and the Receipt & Expense Hub.
 
 2. **`finance_portfolio`**
    - **Purpose:** Stores current business assets, savings accounts, and investment values.
