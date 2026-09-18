@@ -152,3 +152,6 @@ BEGIN
     RETURN 'Datos blindados correctamente!';
 END;
 $$;
+
+GRANT EXECUTE ON FUNCTION claim_all_legacy_data(UUID) TO authenticated;
+
