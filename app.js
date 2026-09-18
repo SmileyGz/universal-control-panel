@@ -239,6 +239,8 @@ const loadYearlyData = async (year) => {
         }
         const trendEl = document.getElementById('kpi-net-trend');
         if (trendEl) trendEl.textContent = '🔒 Inicia sesión para ver tu balance';
+        const rollingEl = document.getElementById('kpi-rolling-balance-val');
+        if (rollingEl) rollingEl.textContent = '$0.00';
 
         const tbody = document.getElementById('transactions-body');
         if (tbody) {
@@ -310,6 +312,35 @@ const loadYearlyData = async (year) => {
         netEl.textContent = formatCurrency(net);
         netEl.className   = `amount ${net >= 0 ? 'text-green' : 'text-red'}`;
         document.getElementById('kpi-net-trend').textContent = net >= 0 ? '↗ Flujo Positivo' : '↘ Flujo Negativo';
+
+        // Calculate Cumulative Rolling Balance (Arrastre Histórico de Caja) up to selected year
+        let cumulativeBalance = 0;
+        try {
+            const { data: allPriorTxs, error: priorErr } = await supabaseClient
+                .from('finance_transactions')
+                .select('type, amount')
+                .lte('date', `${year}-12-31`);
+
+            if (!priorErr && allPriorTxs) {
+                allPriorTxs.forEach(tx => {
+                    const amt = parseFloat(tx.amount || 0);
+                    if (tx.type === 'income') cumulativeBalance += amt;
+                    else if (tx.type === 'expense') cumulativeBalance -= amt;
+                });
+            }
+        } catch (priorErr) {
+            console.warn('Error fetching cumulative balance:', priorErr);
+        }
+
+        const rollingEl = document.getElementById('kpi-rolling-balance-val');
+        if (rollingEl) {
+            rollingEl.textContent = formatCurrency(cumulativeBalance);
+            rollingEl.style.color = cumulativeBalance >= 0 ? 'var(--azteca-gold)' : 'var(--mexican-red)';
+            rollingEl.title = `Arrastre acumulado de caja hasta el 31 de diciembre de ${year}`;
+        }
+
+        const yearTag = document.getElementById('kpi-net-year-tag');
+        if (yearTag) yearTag.textContent = year;
 
         renderTransactions(transactions);
         renderCashflowChart(monthlyData);
