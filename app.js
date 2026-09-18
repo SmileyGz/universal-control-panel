@@ -736,10 +736,35 @@ const loadInvestmentsData = async () => {
 
         if (pError) throw pError;
 
-        // Filter for investments safely in JS (works even if custom columns aren't migrated yet)
+        // STRICT ASSET SEGREGATION: Only real financial market securities in this terminal
+        const EXCLUDED_CATEGORIES = ['negocios', 'préstamos', 'prestamos', 'inmuebles', 'liquidez', 'ahorro'];
+
         const portfolioRows = (allRows || []).filter(row => {
-            const cat = (row.category || '').toLowerCase();
-            return cat === 'inversiones' || Boolean(row.asset_type) || Boolean(row.ticker);
+            const cat = (row.category || '').toLowerCase().trim();
+            const rawType = (row.asset_type || '').toLowerCase().trim();
+            const name = (row.name || '').toLowerCase().trim();
+
+            // 1. Exclude operational businesses, storefronts, loans, real estate, cash boxes, and liquidity
+            if (EXCLUDED_CATEGORIES.includes(cat)) {
+                return false;
+            }
+
+            // 2. Reject cash, currency, loan or business keywords in name
+            if (name.includes('caja') || name.includes('interés') || name.includes('interes') || name.includes('préstamo') || name.includes('prestamo') || name.includes('usd') || name.includes('dólar') || name.includes('dolar')) {
+                return false;
+            }
+
+            // 3. Include if category is explicitly 'inversiones'
+            if (cat === 'inversiones') {
+                return true;
+            }
+
+            // 4. Include if asset_type is an explicit market security (not 'otro')
+            if (['fibra', 'etf', 'stock', 'cetes'].includes(rawType)) {
+                return true;
+            }
+
+            return false;
         });
 
         // 2. Fetch lots from finance_investment_lots (graceful fallback if table not yet created)
@@ -762,7 +787,28 @@ const loadInvestmentsData = async () => {
                 (l.portfolio_id && l.portfolio_id == row.id) || 
                 (l.ticker && row.ticker && l.ticker.trim().toUpperCase() === row.ticker.trim().toUpperCase())
             );
-            
+
+            // Smart extraction of ticker and asset type
+            let rawTicker = (row.ticker || '').trim().toUpperCase();
+            const upperName = row.name.toUpperCase();
+            if (!rawTicker) {
+                if (upperName.includes('FUNO')) rawTicker = 'FUNO11';
+                else if (upperName.includes('FMTY')) rawTicker = 'FMTY14';
+                else if (upperName.includes('IVV')) rawTicker = 'IVVPESO';
+                else if (upperName.includes('CETES')) rawTicker = 'CETES';
+                else rawTicker = (row.name.split(' ')[0] || 'INV').toUpperCase();
+            }
+
+            let resolvedType = (row.asset_type || '').toLowerCase();
+            if (!resolvedType || resolvedType === 'otro') {
+                const text = `${row.name} ${row.notes || ''}`.toLowerCase();
+                if (text.includes('fibra') || text.includes('funo') || text.includes('fmt') || text.includes('terrafina')) resolvedType = 'fibra';
+                else if (text.includes('etf') || text.includes('ivv') || text.includes('voo') || text.includes('spy')) resolvedType = 'etf';
+                else if (text.includes('cete') || text.includes('bono') || text.includes('udibono')) resolvedType = 'cetes';
+                else if (text.includes('accion') || text.includes('acción') || text.includes('stock')) resolvedType = 'stock';
+                else resolvedType = 'stock';
+            }
+
             let totalShares = 0;
             let totalInvested = 0;
 
@@ -777,7 +823,11 @@ const loadInvestmentsData = async () => {
             } else {
                 // If no lots recorded yet, fallback to row value and price
                 totalInvested = parseFloat(row.value || 0);
-                const pr = parseFloat(row.current_price || 0);
+                let pr = parseFloat(row.current_price || 0);
+                if (pr <= 0) {
+                    if (resolvedType === 'cetes') pr = 10.00; // Valor nominal CETES 28D (~$10 MXN)
+                    else pr = totalInvested > 0 ? totalInvested : 1;
+                }
                 totalShares = pr > 0 ? (totalInvested / pr) : 1;
             }
 
@@ -787,24 +837,17 @@ const loadInvestmentsData = async () => {
             const pnl = marketValue - totalInvested;
             const pnlPct = totalInvested > 0 ? ((pnl / totalInvested) * 100) : 0;
 
-            // Smart extraction of ticker and asset type if legacy row
-            const rawTicker = (row.ticker || row.name.split(' ')[0] || 'INV').toUpperCase();
-            let resolvedType = (row.asset_type || '').toLowerCase();
-            if (!resolvedType || resolvedType === 'otro') {
-                const text = `${row.name} ${row.notes || ''}`.toLowerCase();
-                if (text.includes('fibra') || text.includes('funo') || text.includes('fmt') || text.includes('terrafina')) resolvedType = 'fibra';
-                else if (text.includes('etf') || text.includes('ivv') || text.includes('voo') || text.includes('spy')) resolvedType = 'etf';
-                else if (text.includes('cete') || text.includes('bono') || text.includes('udibono')) resolvedType = 'cetes';
-                else if (text.includes('accion') || text.includes('acción') || text.includes('stock')) resolvedType = 'stock';
-                else resolvedType = 'otro';
-            }
+            // Resolve proper institutional broker
+            let defaultBroker = 'GBM+';
+            if (resolvedType === 'cetes') defaultBroker = 'Cetesdirecto';
+            else if (resolvedType === 'fibra' || resolvedType === 'etf' || resolvedType === 'stock') defaultBroker = 'GBM+';
 
             return {
                 id: row.id,
                 ticker: rawTicker,
                 name: row.name,
                 asset_type: resolvedType,
-                broker: rowLots[0]?.broker || 'GBM+',
+                broker: rowLots[0]?.broker || defaultBroker,
                 totalShares,
                 avgCost,
                 currentPrice,
