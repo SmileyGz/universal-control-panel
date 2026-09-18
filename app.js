@@ -65,6 +65,14 @@ document.getElementById('modal-overlay').addEventListener('click', (e) => {
     if (e.target === document.getElementById('modal-overlay')) closeModal();
 });
 
+const readFileAsDataURL = (file) => new Promise((resolve) => {
+    if (!file) return resolve('');
+    const reader = new FileReader();
+    reader.onload = () => resolve(reader.result);
+    reader.onerror = () => resolve('');
+    reader.readAsDataURL(file);
+});
+
 document.getElementById('tx-form').addEventListener('submit', async (e) => {
     e.preventDefault();
     
@@ -82,10 +90,45 @@ document.getElementById('tx-form').addEventListener('submit', async (e) => {
         return;
     }
 
+    // Process attached receipt file if present
+    let attachedFile = null;
+    const receiptInput = document.getElementById('f-receipt-file');
+    if (receiptInput && receiptInput.files && receiptInput.files[0]) {
+        const file = receiptInput.files[0];
+        const dataUrl = await readFileAsDataURL(file);
+        const isImg = file.type.startsWith('image/');
+        const isPdf = file.type === 'application/pdf' || file.name.toLowerCase().endsWith('.pdf');
+        const isXml = file.type === 'text/xml' || file.type === 'application/xml' || file.name.toLowerCase().endsWith('.xml');
+        attachedFile = {
+            id: 'att_' + Date.now(),
+            name: file.name,
+            type: isImg ? 'image' : (isPdf ? 'pdf' : (isXml ? 'xml' : 'doc')),
+            size: (file.size / 1024).toFixed(0) + ' KB',
+            date: tx.date,
+            url: dataUrl
+        };
+    }
+
     try {
         // En Supabase table, the columns are: date, description, amount, type, category, notes
-        const { error } = await supabaseClient.from('finance_transactions').insert([withUser(tx)]);
+        const { data: insertedRows, error } = await supabaseClient
+            .from('finance_transactions')
+            .insert([withUser(tx)])
+            .select();
+
         if (error) throw error;
+
+        // If an attachment was provided, store it in local store for this transaction
+        if (insertedRows && insertedRows.length > 0 && attachedFile) {
+            const newId = insertedRows[0].id;
+            const store = getStoredTxData();
+            store[newId] = {
+                attachments: [attachedFile],
+                is_deductible: false,
+                notes: tx.notes || ''
+            };
+            saveStoredTxData(store);
+        }
 
         closeModal();
         showToast(`✅ "${tx.description}" guardado en Supabase!`);
@@ -353,11 +396,66 @@ const loadYearlyData = async (year) => {
 };
 
 // ============================================================
+// RECEIPT & EXPENSE MANAGEMENT (PHASE 5 / OPTION B)
+// ============================================================
+const ATTACHMENTS_STORAGE_KEY = 'ucp_expense_attachments_v2';
+
+const MOCK_RECEIPT_SVG = 'data:image/svg+xml;utf8,' + encodeURIComponent(`
+<svg xmlns="http://www.w3.org/2000/svg" width="340" height="470" viewBox="0 0 340 470" style="background:#fff; font-family:'Courier New', monospace; color:#111;">
+  <rect width="100%" height="100%" fill="#fafafa"/>
+  <text x="170" y="32" font-size="14" font-weight="bold" text-anchor="middle" fill="#000">SUPERMERCADO CENTRAL</text>
+  <text x="170" y="48" font-size="10" text-anchor="middle" fill="#666">RFC: SMC-980412-8K1</text>
+  <text x="170" y="62" font-size="10" text-anchor="middle" fill="#666">SUCURSAL 014 - PLAZA CANCÚN</text>
+  <line x1="20" y1="72" x2="320" y2="72" stroke="#bbb" stroke-dasharray="3,3"/>
+  <text x="24" y="90" font-size="11" fill="#333">FECHA: 12/03/2026 14:32</text>
+  <text x="24" y="106" font-size="11" fill="#333">TICKET #: 9042-88219</text>
+  <text x="24" y="122" font-size="11" fill="#333">CAJERO: #14 CARLOS M.</text>
+  <line x1="20" y1="132" x2="320" y2="132" stroke="#bbb" stroke-dasharray="3,3"/>
+  <text x="24" y="152" font-size="11" font-weight="bold" fill="#000">CANT  DESCRIPCIÓN          IMPORTE</text>
+  <text x="24" y="172" font-size="11" fill="#222">1  MANZANA RED 1.2KG       $48.50</text>
+  <text x="24" y="190" font-size="11" fill="#222">2  LECHE DESLACTOSADA      $64.00</text>
+  <text x="24" y="208" font-size="11" fill="#222">1  ACEITE VEGETAL 900ML    $42.00</text>
+  <text x="24" y="226" font-size="11" fill="#222">1  CAFÉ MOLIDO GOURMET    $115.00</text>
+  <text x="24" y="244" font-size="11" fill="#222">1  ARTÍCULOS LIMPIEZA     $280.50</text>
+  <text x="24" y="262" font-size="11" fill="#222">1  DESPENSA BÁSICA        $900.00</text>
+  <line x1="20" y1="280" x2="320" y2="280" stroke="#000" stroke-width="1.5"/>
+  <text x="24" y="302" font-size="13" font-weight="bold" fill="#000">TOTAL PAGADO:        $1,450.00</text>
+  <text x="24" y="322" font-size="11" fill="#555">IVA 16% TRASLADADO:   $180.20</text>
+  <line x1="20" y1="334" x2="320" y2="334" stroke="#bbb" stroke-dasharray="3,3"/>
+  <text x="170" y="355" font-size="10" text-anchor="middle" fill="#444">MÉTODO: TARJETA DE DÉBITO</text>
+  <text x="170" y="370" font-size="10" text-anchor="middle" fill="#444">AUT: 088492  VISA **** 4892</text>
+  <text x="170" y="398" font-size="11" font-weight="bold" text-anchor="middle" fill="#059669">*** COMPROBANTE VÁLIDO ***</text>
+  <text x="170" y="418" font-size="9" text-anchor="middle" fill="#777">Conserve este ticket para aclaraciones contables</text>
+  <rect x="50" y="432" width="240" height="14" fill="#ccc"/>
+</svg>
+`);
+
+const getStoredTxData = () => {
+    try {
+        return JSON.parse(localStorage.getItem(ATTACHMENTS_STORAGE_KEY) || '{}');
+    } catch (e) {
+        return {};
+    }
+};
+
+const saveStoredTxData = (store) => {
+    try {
+        localStorage.setItem(ATTACHMENTS_STORAGE_KEY, JSON.stringify(store));
+    } catch (e) {
+        console.warn('LocalStorage quota or write error', e);
+    }
+};
+
+// ============================================================
 // TRANSACTION FILTERS & DYNAMIC SUBTOTAL LEDGER
 // ============================================================
 let currentTransactions = [];
 let latestFilteredTransactions = [];
 let activeTxFilter = 'all';
+
+// State for active transaction in Receipt Hub
+let activeReceiptTx = null;
+let activeReceiptAttachments = [];
 
 const applyTransactionsFilter = () => {
     const tbody = document.getElementById('transactions-body');
@@ -373,6 +471,12 @@ const applyTransactionsFilter = () => {
             matchesFilter = tx.type === 'income';
         } else if (activeTxFilter === 'expense') {
             matchesFilter = tx.type === 'expense';
+        } else if (activeTxFilter === 'unbacked') {
+            // Only expenses that lack any ticket or invoice attachment
+            matchesFilter = tx.type === 'expense' && (!tx.attachments || tx.attachments.length === 0);
+        } else if (activeTxFilter === 'backed') {
+            // Transactions with at least 1 document attached
+            matchesFilter = !!(tx.attachments && tx.attachments.length > 0);
         } else if (activeTxFilter === 'business') {
             const cat = (tx.category || '').toLowerCase();
             const desc = (tx.description || '').toLowerCase();
@@ -420,12 +524,34 @@ const applyTransactionsFilter = () => {
     }
 
     if (filtered.length === 0) {
-        tbody.innerHTML = `<tr><td colspan="6" class="text-center" style="padding:32px;color:var(--text-muted)">No hay transacciones que coincidan con los filtros seleccionados.</td></tr>`;
+        tbody.innerHTML = `<tr><td colspan="7" class="text-center" style="padding:32px;color:var(--text-muted)">No hay transacciones que coincidan con los filtros seleccionados.</td></tr>`;
         return;
     }
 
     filtered.forEach(tx => {
         const isIncome = tx.type === 'income';
+        const attachments = tx.attachments || [];
+        const hasAttachments = attachments.length > 0;
+        const isDeductible = !!tx.is_deductible;
+
+        let receiptBadgeHtml = '';
+        if (hasAttachments) {
+            receiptBadgeHtml = `
+                <button class="receipt-badge has-files" data-tx-id="${tx.id}" title="Ver comprobantes y notas">
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48"/></svg>
+                    <span>${attachments.length} ${attachments.length === 1 ? 'doc' : 'docs'}</span>
+                    ${isDeductible ? '<span class="tax-tag" title="Gasto Deducible / Factura CFDI">CFDI</span>' : ''}
+                </button>
+            `;
+        } else {
+            receiptBadgeHtml = `
+                <button class="receipt-badge empty" data-tx-id="${tx.id}" title="Subir ticket o factura">
+                    <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+                    <span>Adjuntar</span>
+                </button>
+            `;
+        }
+
         const tr = document.createElement('tr');
         tr.innerHTML = `
             <td style="font-family: var(--font-mono); font-size: 13px; color: var(--text-secondary);">${tx.date || '-'}</td>
@@ -443,10 +569,22 @@ const applyTransactionsFilter = () => {
                 <span class="badge ${tx.type}">${isIncome ? 'Ingreso' : 'Gasto'}</span>
             </td>
             <td class="align-center">
+                ${receiptBadgeHtml}
+            </td>
+            <td class="align-center">
                 <button class="delete-btn" data-id="${tx.id}" title="Eliminar movimiento">✕</button>
             </td>
         `;
         tbody.appendChild(tr);
+    });
+
+    // Wire up Receipt Badge click listeners
+    tbody.querySelectorAll('.receipt-badge').forEach(btn => {
+        btn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            const txId = btn.dataset.txId;
+            openReceiptHub(txId);
+        });
     });
 
     tbody.querySelectorAll('.delete-btn').forEach(btn => {
@@ -468,6 +606,76 @@ const applyTransactionsFilter = () => {
 
 const renderTransactions = (transactions) => {
     currentTransactions = transactions || [];
+    
+    // Merge client-side attachments & notes store
+    const store = getStoredTxData();
+
+    // Auto-seed realistic demo attachments on the first 2 expense rows if store has never been seeded
+    const hasSeeded = localStorage.getItem('ucp_demo_receipts_seeded_v2');
+    if (!hasSeeded && currentTransactions.length > 0) {
+        let seededCount = 0;
+        currentTransactions.forEach(tx => {
+            if (tx.type === 'expense' && seededCount < 2) {
+                if (seededCount === 0) {
+                    store[tx.id] = {
+                        attachments: [
+                            {
+                                id: 'att_seed_1',
+                                name: 'ticket_compra_super.png',
+                                type: 'image',
+                                size: '142 KB',
+                                date: tx.date || todayISO(),
+                                url: MOCK_RECEIPT_SVG
+                            },
+                            {
+                                id: 'att_seed_2',
+                                name: 'factura_CFDI_A491.pdf',
+                                type: 'pdf',
+                                size: '210 KB',
+                                date: tx.date || todayISO(),
+                                url: '#'
+                            }
+                        ],
+                        is_deductible: true,
+                        notes: tx.notes ? `${tx.notes} #Deducible #GastoOperativo` : 'Despensa de insumos #Deducible #GastoOperativo'
+                    };
+                } else if (seededCount === 1) {
+                    store[tx.id] = {
+                        attachments: [
+                            {
+                                id: 'att_seed_3',
+                                name: 'recibo_combustible.png',
+                                type: 'image',
+                                size: '98 KB',
+                                date: tx.date || todayISO(),
+                                url: MOCK_RECEIPT_SVG
+                            }
+                        ],
+                        is_deductible: false,
+                        notes: tx.notes ? `${tx.notes} #CajaChica` : 'Traslado operativo #CajaChica'
+                    };
+                }
+                seededCount++;
+            }
+        });
+        saveStoredTxData(store);
+        localStorage.setItem('ucp_demo_receipts_seeded_v2', 'true');
+    }
+
+    // Hydrate each transaction with attachments, is_deductible, and rich notes
+    currentTransactions.forEach(tx => {
+        if (store[tx.id]) {
+            tx.attachments = store[tx.id].attachments || [];
+            tx.is_deductible = !!store[tx.id].is_deductible;
+            if (store[tx.id].notes !== undefined && store[tx.id].notes !== '') {
+                tx.notes = store[tx.id].notes;
+            }
+        } else {
+            tx.attachments = tx.attachments || [];
+            tx.is_deductible = !!tx.is_deductible;
+        }
+    });
+
     applyTransactionsFilter();
 };
 
@@ -483,6 +691,355 @@ document.querySelectorAll('#tx-filter-pills .pill-btn').forEach(btn => {
 
 document.getElementById('tx-search')?.addEventListener('input', () => {
     applyTransactionsFilter();
+});
+
+// ============================================================
+// RECEIPT HUB & LIGHTBOX CONTROLLER
+// ============================================================
+const openReceiptHub = (txId) => {
+    const tx = currentTransactions.find(t => String(t.id) === String(txId));
+    if (!tx) {
+        showToast('Transacción no encontrada.', 'warning');
+        return;
+    }
+
+    activeReceiptTx = tx;
+    activeReceiptAttachments = [...(tx.attachments || [])];
+
+    // Populate Snapshot Card
+    const isIncome = tx.type === 'income';
+    const conceptEl = document.getElementById('rh-concept');
+    const amountEl = document.getElementById('rh-amount');
+    const dateEl = document.getElementById('rh-date');
+    const badgeCatEl = document.getElementById('rh-badge-category');
+
+    if (conceptEl) conceptEl.textContent = tx.description || 'Sin concepto';
+    if (amountEl) {
+        amountEl.textContent = `${isIncome ? '+' : '-'}${formatCurrency(tx.amount)} MXN`;
+        amountEl.className = isIncome ? 'text-green' : 'text-red';
+    }
+    if (dateEl) dateEl.textContent = tx.date || '-';
+    if (badgeCatEl) badgeCatEl.textContent = tx.category || 'General';
+
+    // Populate Deductible toggle
+    const toggle = document.getElementById('rh-deductible-toggle');
+    const toggleLabel = document.getElementById('rh-deductible-label');
+    if (toggle) {
+        toggle.checked = !!tx.is_deductible;
+        if (toggleLabel) {
+            toggleLabel.textContent = toggle.checked ? 'Sí (Facturado / CFDI)' : 'No';
+            toggleLabel.style.color = toggle.checked ? 'var(--azteca-green-vibrant)' : 'var(--text-secondary)';
+        }
+    }
+
+    // Populate Notes
+    const notesEl = document.getElementById('rh-notes');
+    if (notesEl) notesEl.value = tx.notes || '';
+
+    // Update Quick Tags active state based on note content
+    updateQuickTagsVisualState(notesEl ? notesEl.value : '');
+
+    // Render attachments
+    renderReceiptHubAttachments();
+
+    // Show modal
+    document.getElementById('modal-receipt-hub')?.classList.remove('hidden');
+};
+
+const closeReceiptHub = () => {
+    document.getElementById('modal-receipt-hub')?.classList.add('hidden');
+    activeReceiptTx = null;
+    activeReceiptAttachments = [];
+};
+
+const updateQuickTagsVisualState = (noteContent) => {
+    document.querySelectorAll('.quick-tag-chip').forEach(chip => {
+        const tag = chip.dataset.tag;
+        if (tag && noteContent.includes(tag)) {
+            chip.classList.add('active');
+        } else {
+            chip.classList.remove('active');
+        }
+    });
+};
+
+const renderReceiptHubAttachments = () => {
+    const emptyEl = document.getElementById('rh-attachments-empty');
+    const gridEl = document.getElementById('rh-attachments-grid');
+    if (!emptyEl || !gridEl) return;
+
+    if (!activeReceiptAttachments || activeReceiptAttachments.length === 0) {
+        emptyEl.classList.remove('hidden');
+        gridEl.classList.add('hidden');
+        gridEl.innerHTML = '';
+        return;
+    }
+
+    emptyEl.classList.add('hidden');
+    gridEl.classList.remove('hidden');
+    gridEl.innerHTML = '';
+
+    activeReceiptAttachments.forEach((att, idx) => {
+        const card = document.createElement('div');
+        card.className = 'attachment-card';
+
+        const isImage = att.type === 'image';
+        const isPdf = att.type === 'pdf';
+        const isXml = att.type === 'xml';
+
+        let previewHtml = '';
+        if (isImage) {
+            previewHtml = `
+                <div class="attachment-thumb-wrap" data-idx="${idx}" title="Clic para ampliar y hacer zoom">
+                    <img src="${att.url}" alt="${att.name}">
+                </div>
+            `;
+        } else if (isPdf) {
+            previewHtml = `
+                <div class="attachment-thumb-wrap" data-idx="${idx}" style="background: rgba(239, 68, 68, 0.1); color: #f87171;" title="Documento PDF">
+                    <div class="attachment-doc-icon">📄</div>
+                </div>
+            `;
+        } else if (isXml) {
+            previewHtml = `
+                <div class="attachment-thumb-wrap" data-idx="${idx}" style="background: rgba(16, 185, 129, 0.1); color: #6ee7b7;" title="Factura XML (CFDI)">
+                    <div class="attachment-doc-icon">🏷️</div>
+                </div>
+            `;
+        } else {
+            previewHtml = `
+                <div class="attachment-thumb-wrap" data-idx="${idx}" style="background: rgba(255, 255, 255, 0.05);">
+                    <div class="attachment-doc-icon">📁</div>
+                </div>
+            `;
+        }
+
+        card.innerHTML = `
+            <button type="button" class="attachment-remove-btn" data-idx="${idx}" title="Eliminar este archivo">✕</button>
+            ${previewHtml}
+            <div class="attachment-info">
+                <div class="attachment-name" title="${att.name}">${att.name}</div>
+                <div class="attachment-meta">
+                    <span>${(att.type || 'DOC').toUpperCase()}</span>
+                    <span>${att.size || ''}</span>
+                </div>
+            </div>
+        `;
+
+        // Wire remove click
+        card.querySelector('.attachment-remove-btn')?.addEventListener('click', (e) => {
+            e.stopPropagation();
+            activeReceiptAttachments.splice(idx, 1);
+            renderReceiptHubAttachments();
+            showToast('Archivo removido del comprobante.', 'warning');
+        });
+
+        // Wire thumbnail preview click
+        card.querySelector('.attachment-thumb-wrap')?.addEventListener('click', () => {
+            if (isImage) {
+                openLightbox(att.url, `${att.name} — ${activeReceiptTx?.description || ''}`);
+            } else if (att.url && att.url !== '#') {
+                const w = window.open(att.url, '_blank');
+                if (!w) showToast('Descargando comprobante...', 'info');
+            } else {
+                showToast(`📄 Documento fiscal: ${att.name}`, 'info');
+            }
+        });
+
+        gridEl.appendChild(card);
+    });
+};
+
+// Process multiple uploaded files into activeReceiptAttachments
+const processUploadedFiles = async (fileList) => {
+    if (!fileList || fileList.length === 0) return;
+
+    for (let i = 0; i < fileList.length; i++) {
+        const file = fileList[i];
+        const dataUrl = await readFileAsDataURL(file);
+        const isImg = file.type.startsWith('image/');
+        const isPdf = file.type === 'application/pdf' || file.name.toLowerCase().endsWith('.pdf');
+        const isXml = file.type === 'text/xml' || file.type === 'application/xml' || file.name.toLowerCase().endsWith('.xml');
+
+        activeReceiptAttachments.push({
+            id: 'att_' + Date.now() + '_' + i,
+            name: file.name,
+            type: isImg ? 'image' : (isPdf ? 'pdf' : (isXml ? 'xml' : 'doc')),
+            size: (file.size / 1024).toFixed(0) + ' KB',
+            date: todayISO(),
+            url: dataUrl
+        });
+    }
+
+    renderReceiptHubAttachments();
+    showToast(`📎 ${fileList.length} archivo(s) agregado(s). Haz clic en 'Guardar' para confirmar.`, 'success');
+};
+
+// Wire Dropzone events
+const dropzone = document.getElementById('rh-dropzone');
+const fileInput = document.getElementById('rh-file-input');
+const browseBtn = document.getElementById('rh-browse-btn');
+
+browseBtn?.addEventListener('click', (e) => {
+    e.preventDefault();
+    fileInput?.click();
+});
+
+dropzone?.addEventListener('click', (e) => {
+    if (e.target !== browseBtn) fileInput?.click();
+});
+
+fileInput?.addEventListener('change', (e) => {
+    if (e.target.files && e.target.files.length > 0) {
+        processUploadedFiles(e.target.files);
+        fileInput.value = '';
+    }
+});
+
+if (dropzone) {
+    ['dragenter', 'dragover'].forEach(evtName => {
+        dropzone.addEventListener(evtName, (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            dropzone.classList.add('drag-over');
+        });
+    });
+
+    ['dragleave', 'drop'].forEach(evtName => {
+        dropzone.addEventListener(evtName, (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            dropzone.classList.remove('drag-over');
+        });
+    });
+
+    dropzone.addEventListener('drop', (e) => {
+        const dt = e.dataTransfer;
+        if (dt && dt.files && dt.files.length > 0) {
+            processUploadedFiles(dt.files);
+        }
+    });
+}
+
+// Wire Deductible toggle change
+document.getElementById('rh-deductible-toggle')?.addEventListener('change', (e) => {
+    const isChecked = e.target.checked;
+    const label = document.getElementById('rh-deductible-label');
+    if (label) {
+        label.textContent = isChecked ? 'Sí (Facturado / CFDI)' : 'No';
+        label.style.color = isChecked ? 'var(--azteca-green-vibrant)' : 'var(--text-secondary)';
+    }
+
+    // Auto-toggle #Deducible tag in notes if checked
+    const notesEl = document.getElementById('rh-notes');
+    if (notesEl) {
+        if (isChecked && !notesEl.value.includes('#Deducible')) {
+            notesEl.value = (notesEl.value.trim() + ' #Deducible').trim();
+            updateQuickTagsVisualState(notesEl.value);
+        }
+    }
+});
+
+// Wire Quick Tag Chips clicking
+document.querySelectorAll('.quick-tag-chip').forEach(chip => {
+    chip.addEventListener('click', () => {
+        const tag = chip.dataset.tag;
+        const notesEl = document.getElementById('rh-notes');
+        if (!tag || !notesEl) return;
+
+        let currentNotes = notesEl.value.trim();
+        if (currentNotes.includes(tag)) {
+            // Remove tag
+            currentNotes = currentNotes.replace(tag, '').replace(/\s{2,}/g, ' ').trim();
+            chip.classList.remove('active');
+        } else {
+            // Add tag
+            currentNotes = currentNotes ? `${currentNotes} ${tag}` : tag;
+            chip.classList.add('active');
+        }
+        notesEl.value = currentNotes;
+    });
+});
+
+// Wire Save Changes Button in Receipt Hub
+document.getElementById('rh-btn-save')?.addEventListener('click', () => {
+    if (!activeReceiptTx) return;
+
+    const notesVal = document.getElementById('rh-notes')?.value.trim() || '';
+    const isDeductible = !!document.getElementById('rh-deductible-toggle')?.checked;
+
+    // Update in-memory active transaction
+    activeReceiptTx.notes = notesVal;
+    activeReceiptTx.is_deductible = isDeductible;
+    activeReceiptTx.attachments = activeReceiptAttachments;
+
+    // Persist to local store
+    const store = getStoredTxData();
+    store[activeReceiptTx.id] = {
+        attachments: activeReceiptAttachments,
+        is_deductible: isDeductible,
+        notes: notesVal
+    };
+    saveStoredTxData(store);
+
+    // Also update remote Supabase notes if connected
+    if (supabaseClient) {
+        supabaseClient
+            .from('finance_transactions')
+            .update({ notes: notesVal })
+            .eq('id', activeReceiptTx.id)
+            .then(({ error }) => {
+                if (error) console.warn('Remote notes sync notice:', error);
+            });
+    }
+
+    closeReceiptHub();
+    applyTransactionsFilter();
+    showToast('💾 Comprobantes y notas guardados correctamente.', 'success');
+});
+
+// Close buttons for Receipt Hub
+document.getElementById('rh-close')?.addEventListener('click', closeReceiptHub);
+document.getElementById('rh-btn-close')?.addEventListener('click', closeReceiptHub);
+document.getElementById('modal-receipt-hub')?.addEventListener('click', (e) => {
+    if (e.target === document.getElementById('modal-receipt-hub')) closeReceiptHub();
+});
+
+// Lightbox Zoom Modal
+const openLightbox = (src, caption) => {
+    const lightbox = document.getElementById('receipt-lightbox');
+    const img = document.getElementById('lightbox-img');
+    const cap = document.getElementById('lightbox-caption');
+    if (!lightbox || !img) return;
+
+    img.src = src;
+    if (cap) cap.textContent = caption || '';
+    lightbox.classList.remove('hidden');
+};
+
+const closeLightbox = () => {
+    const lightbox = document.getElementById('receipt-lightbox');
+    if (lightbox) lightbox.classList.add('hidden');
+};
+
+document.getElementById('lightbox-close')?.addEventListener('click', closeLightbox);
+document.getElementById('receipt-lightbox')?.addEventListener('click', (e) => {
+    if (e.target === document.getElementById('receipt-lightbox')) closeLightbox();
+});
+
+// ESC key closes modals
+window.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape') {
+        const lightbox = document.getElementById('receipt-lightbox');
+        if (lightbox && !lightbox.classList.contains('hidden')) {
+            closeLightbox();
+            return;
+        }
+        const rhModal = document.getElementById('modal-receipt-hub');
+        if (rhModal && !rhModal.classList.contains('hidden')) {
+            closeReceiptHub();
+        }
+    }
 });
 
 // Export Transactions to CSV / Excel with UTF-8 BOM
