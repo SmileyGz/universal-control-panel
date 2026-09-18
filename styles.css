@@ -2081,3 +2081,21 @@ body.privacy-mode-active .ticker-price {
     opacity: 1;
     transform: scale(1.1);
 }
+
+/* Grouped Select Styles */
+select.glass-input optgroup {
+    background: #0d1117;
+    color: var(--azteca-gold);
+    font-weight: 700;
+    font-size: 11px;
+    letter-spacing: 0.5px;
+    padding: 6px 0 2px 0;
+}
+
+select.glass-input option {
+    background: #161b22;
+    color: var(--text-on-dark);
+    font-weight: normal;
+    font-size: 12px;
+    padding: 6px 10px;
+}

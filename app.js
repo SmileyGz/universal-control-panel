@@ -47,12 +47,121 @@ const showToast = (message, type = 'success') => {
 };
 
 // ============================================================
+// DYNAMIC CATEGORY CATALOG BY TRANSACTION TYPE (PHASE 6)
+// ============================================================
+const TRANSACTION_CATEGORIES = {
+    expense: [
+        {
+            group: '⚡ Gastos Fijos & Servicios',
+            options: [
+                { value: 'Luz / CFE', label: '💡 Luz / CFE' },
+                { value: 'Agua Potable', label: '💧 Agua Potable' },
+                { value: 'Gas', label: '⛽ Gas (LP / Natural)' },
+                { value: 'Internet / WiFi', label: '🌐 Internet & WiFi' },
+                { value: 'Telefonía / Recargas', label: '📱 Telefonía / Recargas' },
+                { value: 'Renta / Vivienda', label: '🏠 Renta / Vivienda' },
+                { value: 'Gasolina / Transporte', label: '🚗 Gasolina & Transporte' },
+                { value: 'Suscripciones / Software', label: '💻 Suscripciones & Apps' },
+                { value: 'Seguros / Pólizas', label: '🛡️ Seguros & Pólizas' }
+            ]
+        },
+        {
+            group: '🛒 Gastos Variables & Estilo de Vida',
+            options: [
+                { value: 'Súper / Despensa', label: '🛒 Súper / Despensa' },
+                { value: 'Restaurantes / Comida', label: '🍽️ Restaurantes & Comida' },
+                { value: 'Salud / Farmacia', label: '💊 Salud & Farmacia' },
+                { value: 'Ropa / Compras', label: '👕 Ropa & Compras' },
+                { value: 'Ocio / Entretenimiento', label: '🍿 Ocio & Entretenimiento' },
+                { value: 'Educación / Cursos', label: '📚 Educación & Libros' },
+                { value: 'Otros Gastos', label: '💳 Otros Gastos Personales' }
+            ]
+        },
+        {
+            group: '📦 Negocios & Operación',
+            options: [
+                { value: 'Inventario / Mercancía', label: '📦 Inventario & Mercancía' },
+                { value: 'Envíos / Logística', label: '🚚 Envíos & Guías' },
+                { value: 'Marketing / Publicidad', label: '📢 Marketing & Meta Ads' },
+                { value: 'Empaque / Materiales', label: '📦 Empaque & Insumos' },
+                { value: 'Comisiones / Pasarelas', label: '💳 Comisiones Pasarelas' }
+            ]
+        }
+    ],
+    income: [
+        {
+            group: '💼 Negocios & Ingresos Activos',
+            options: [
+                { value: 'Ventas Tienda', label: '🛒 Ventas Tienda / E-commerce' },
+                { value: 'Freelance / Upwork', label: '💻 Freelance / Clientes / Upwork' },
+                { value: 'Sueldo / Honorarios', label: '💼 Sueldo / Honorarios' },
+                { value: 'Comisiones Ventas', label: '🤝 Comisiones por Venta' }
+            ]
+        },
+        {
+            group: '📈 Flujo Pasivo & Rentas',
+            options: [
+                { value: 'Préstamo — Interés Recibido', label: '🏦 Préstamo — Interés Recibido' },
+                { value: 'Préstamo — Abono a Capital', label: '🏦 Préstamo — Abono a Capital' },
+                { value: 'CETES — Rendimiento', label: '🏛️ CETES — Rendimiento' },
+                { value: 'Bolsa / FIBRAs — Rendimiento', label: '📈 Bolsa / FIBRAs — Rendimiento' },
+                { value: 'Rentas Cobradas', label: '🏠 Renta Cobrada (Inmueble)' }
+            ]
+        },
+        {
+            group: '🏦 Otros Ingresos',
+            options: [
+                { value: 'Depósito / Transferencia', label: '🔄 Depósito / Transferencia' },
+                { value: 'Reembolso / Devolución', label: '↩️ Reembolso / Devolución' },
+                { value: 'Otros Ingresos', label: '💰 Otros Ingresos' }
+            ]
+        }
+    ],
+    portfolio: [
+        {
+            group: '🏛️ Patrimonio & Movimientos de Capital',
+            options: [
+                { value: 'Aportación a Negocio', label: '💼 Aportación a Negocio' },
+                { value: 'Compra de Acciones / Títulos', label: '📈 Compra Títulos / FIBRAs' },
+                { value: 'Aporte a CETES', label: '🏛️ Depósito CETES / Renta Fija' },
+                { value: 'Fondeo de Préstamo', label: '🤝 Fondeo de Préstamo' },
+                { value: 'Traspaso entre Cuentas', label: '🔄 Traspaso entre Cuentas' }
+            ]
+        }
+    ]
+};
+
+const updateCategoryDropdown = (type = 'expense', selectedVal = null) => {
+    const catSelect = document.getElementById('f-category');
+    if (!catSelect) return;
+    catSelect.innerHTML = '';
+
+    const groups = TRANSACTION_CATEGORIES[type] || TRANSACTION_CATEGORIES.expense;
+    groups.forEach(g => {
+        const optgroup = document.createElement('optgroup');
+        optgroup.label = g.group;
+        g.options.forEach(opt => {
+            const optionEl = document.createElement('option');
+            optionEl.value = opt.value;
+            optionEl.textContent = opt.label;
+            if (selectedVal && selectedVal === opt.value) {
+                optionEl.selected = true;
+            }
+            optgroup.appendChild(optionEl);
+        });
+        catSelect.appendChild(optgroup);
+    });
+};
+
+// ============================================================
 // MODAL
 // ============================================================
 const openModal = () => {
-    document.getElementById('f-date').value = todayISO();
     document.getElementById('tx-form').reset();
     document.getElementById('f-date').value = todayISO();
+    const typeSelect = document.getElementById('f-type');
+    if (typeSelect) typeSelect.value = 'expense';
+    updateCategoryDropdown('expense');
     document.getElementById('modal-overlay').classList.remove('hidden');
 };
 const closeModal = () => document.getElementById('modal-overlay').classList.add('hidden');
@@ -63,6 +172,11 @@ document.getElementById('modal-close')?.addEventListener('click', closeModal);
 document.getElementById('btn-cancel')?.addEventListener('click', closeModal);
 document.getElementById('modal-overlay').addEventListener('click', (e) => {
     if (e.target === document.getElementById('modal-overlay')) closeModal();
+});
+
+// Dynamic Cascading Category Switcher
+document.getElementById('f-type')?.addEventListener('change', (e) => {
+    updateCategoryDropdown(e.target.value);
 });
 
 const readFileAsDataURL = (file) => new Promise((resolve) => {

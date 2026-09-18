@@ -13,8 +13,8 @@
     <!-- Chart.js -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 
-    <!-- Custom CSS (v4.1 cache bust - FASE 5) -->
-    <link rel="stylesheet" href="styles.css?v=4.1">
+    <!-- Custom CSS (v4.2 cache bust - FASE 6) -->
+    <link rel="stylesheet" href="styles.css?v=4.2">
 
     <!-- Supabase JS Client -->
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
@@ -576,24 +576,33 @@
                     <div class="form-group">
                         <label for="f-category">Categoría</label>
                         <select id="f-category" class="glass-input">
-                            <option value="Personal / Vida">Personal / Vida</option>
-                            <option value="Súper / Comida">Súper / Comida</option>
-                            <option value="Servicios">Servicios</option>
-                            <option value="Transporte">Transporte</option>
-                            <option value="Marketing / Publicidad">Marketing / Publicidad</option>
-                            <option value="Envíos / Logística">Envíos / Logística</option>
-                            <option value="Empaque / Materiales">Empaque / Materiales</option>
-                            <option value="Inventario / Productos">Inventario / Productos</option>
-                            <option value="Renta">Renta</option>
-                            <option value="Intereses / Inversiones">Intereses / Inversiones</option>
-                            <option value="Ventas">Ventas</option>
-                            <option value="Freelance / Upwork">Freelance / Upwork</option>
-                            <option value="Depósito / Transferencia">Depósito / Transferencia</option>
-                            <option value="Préstamo — Interés Recibido">🏦 Préstamo — Interés Recibido</option>
-                            <option value="Préstamo — Abono Capital">🏦 Préstamo — Abono a Capital</option>
-                            <option value="CETES — Rendimiento">🏛️ CETES — Rendimiento</option>
-                            <option value="Bolsa / FIBRAs — Rendimiento">📈 Bolsa / FIBRAs — Rendimiento</option>
-                            <option value="Otros">Otros</option>
+                            <optgroup label="⚡ Gastos Fijos & Servicios">
+                                <option value="Luz / CFE">💡 Luz / CFE</option>
+                                <option value="Agua Potable">💧 Agua Potable</option>
+                                <option value="Gas">⛽ Gas (LP / Natural)</option>
+                                <option value="Internet / WiFi">🌐 Internet & WiFi</option>
+                                <option value="Telefonía / Recargas">📱 Telefonía / Recargas</option>
+                                <option value="Renta / Vivienda">🏠 Renta / Vivienda</option>
+                                <option value="Gasolina / Transporte">🚗 Gasolina & Transporte</option>
+                                <option value="Suscripciones / Software">💻 Suscripciones & Apps</option>
+                                <option value="Seguros / Pólizas">🛡️ Seguros & Pólizas</option>
+                            </optgroup>
+                            <optgroup label="🛒 Gastos Variables & Estilo de Vida">
+                                <option value="Súper / Despensa">🛒 Súper / Despensa</option>
+                                <option value="Restaurantes / Comida">🍽️ Restaurantes & Comida</option>
+                                <option value="Salud / Farmacia">💊 Salud & Farmacia</option>
+                                <option value="Ropa / Compras">👕 Ropa & Compras</option>
+                                <option value="Ocio / Entretenimiento">🍿 Ocio & Entretenimiento</option>
+                                <option value="Educación / Cursos">📚 Educación & Libros</option>
+                                <option value="Otros Gastos">💳 Otros Gastos Personales</option>
+                            </optgroup>
+                            <optgroup label="📦 Negocios & Operación">
+                                <option value="Inventario / Mercancía">📦 Inventario & Mercancía</option>
+                                <option value="Envíos / Logística">🚚 Envíos & Guías</option>
+                                <option value="Marketing / Publicidad">📢 Marketing & Meta Ads</option>
+                                <option value="Empaque / Materiales">📦 Empaque & Insumos</option>
+                                <option value="Comisiones / Pasarelas">💳 Comisiones Pasarelas</option>
+                            </optgroup>
                         </select>
                     </div>
                 </div>
@@ -1337,6 +1346,6 @@
 
     <!-- Custom Logic -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
-    <script src="app.js?v=20260918_v15"></script>
+    <script src="app.js?v=20260918_v16"></script>
 </body>
 </html>
