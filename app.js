@@ -2298,47 +2298,6 @@ document.getElementById('menu-btn-logout')?.addEventListener('click', async () =
     }
 });
 
-document.getElementById('menu-btn-claim-data')?.addEventListener('click', async () => {
-    document.getElementById('user-dropdown')?.classList.add('hidden');
-    if (!currentUser) {
-        showToast('Inicia sesión para reclamar tus datos históricos.', 'error');
-        return;
-    }
-    if (!confirm(`¿Deseas blindar y asignar todos tus registros de UCP a tu cuenta (${currentUser.email})?`)) return;
-
-    showToast('⏳ Vinculando datos históricos...', 'info');
-
-    try {
-        // Try the stored function first
-        let claimedViaRpc = false;
-        const { data: rpcData, error: rpcError } = await supabaseClient.rpc('claim_all_legacy_data', {
-            target_user_id: currentUser.id
-        });
-
-        if (!rpcError) {
-            claimedViaRpc = true;
-        } else {
-            console.warn('RPC claim_all_legacy_data fallback:', rpcError);
-            const resTx = await supabaseClient.from('finance_transactions').update({ user_id: currentUser.id }).is('user_id', null);
-            await supabaseClient.from('finance_portfolio').update({ user_id: currentUser.id }).is('user_id', null);
-            await supabaseClient.from('finance_investment_lots').update({ user_id: currentUser.id }).is('user_id', null);
-            await supabaseClient.from('finance_loans').update({ user_id: currentUser.id }).is('user_id', null);
-            await supabaseClient.from('finance_rentals').update({ user_id: currentUser.id }).is('user_id', null);
-
-            if (resTx.error && resTx.error.message && resTx.error.message.includes('user_id')) {
-                alert('⚠️ Importante: Falta ejecutar el script SQL en Supabase.\n\nTu base de datos aún no tiene la columna user_id ni Row Level Security activo.\n\nPor favor ve a tu Supabase Dashboard -> SQL Editor y corre el script supabase_multitenant_schema.sql.');
-                return;
-            }
-        }
-
-        showToast('🔒 ¡Tus datos históricos han sido blindados y asignados a tu cuenta!', 'success');
-        await refreshAllData();
-    } catch (err) {
-        console.error('Claim data error:', err);
-        showToast('Error vinculando datos: ' + (err.message || 'Verifica la consola'), 'error');
-    }
-});
-
 // ============================================================
 // KEYBOARD SHORTCUTS & ERGONOMICS
 // ============================================================
