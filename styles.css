@@ -579,6 +579,37 @@ nav {
     border-radius: 3px;
 }
 
+.ticker-tag.portfolio {
+    background: rgba(0, 168, 89, 0.16);
+    color: var(--azteca-green-vibrant);
+    border: 1px solid rgba(0, 168, 89, 0.35);
+    font-weight: 700;
+}
+
+.ticker-divider {
+    color: rgba(255, 255, 255, 0.25);
+    font-size: 13px;
+    font-weight: 300;
+    margin: 0 6px;
+    user-select: none;
+}
+
+.ticker-section-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    font-size: 9px;
+    font-weight: 800;
+    letter-spacing: 0.6px;
+    padding: 2px 7px;
+    border-radius: 4px;
+    text-transform: uppercase;
+    white-space: nowrap;
+    background: rgba(0, 168, 89, 0.15);
+    color: var(--azteca-green-vibrant);
+    border: 1px solid rgba(0, 168, 89, 0.35);
+}
+
 /* Market Live Pill in Topbar */
 .market-live-pill {
     display: inline-flex;

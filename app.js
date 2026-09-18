@@ -2052,10 +2052,11 @@ const renderTickerTrack = () => {
     const track = document.getElementById('ticker-track');
     if (!track) return;
 
-    const symbolsOrder = ['USDMXN', 'CETES28D', 'IPC', 'FUNO11', 'IVVPESO', 'FMTY14', 'UDIS'];
-    const quotes = symbolsOrder.map(s => latestMarketQuotes[s] || DEFAULT_MARKET_QUOTES.find(d => d.symbol === s)).filter(Boolean);
+    // 1. Core Macro Anchors (Official Mexican Benchmarks: USD/MXN, CETES 28D, IPC, UDIs)
+    const macroSymbols = ['USDMXN', 'CETES28D', 'IPC', 'UDIS'];
+    const macroQuotes = macroSymbols.map(s => latestMarketQuotes[s] || DEFAULT_MARKET_QUOTES.find(d => d.symbol === s)).filter(Boolean);
 
-    const buildItemsHtml = () => quotes.map(q => {
+    const macroHtml = macroQuotes.map(q => {
         let priceStr = '';
         let badgeHtml = '';
         let isGold = false;
@@ -2089,13 +2090,59 @@ const renderTickerTrack = () => {
         if (q.symbol === 'USDMXN') dispSym = 'USD/MXN';
         else if (q.symbol === 'CETES28D') dispSym = 'CETES 28D';
         else if (q.symbol === 'IPC') dispSym = 'S&P/BMV IPC';
-        else if (q.symbol === 'FUNO11') dispSym = 'FUNO 11';
-        else if (q.symbol === 'FMTY14') dispSym = 'FMTY 14';
 
-        return `<div class="ticker-item" title="${q.name} • Fuente: ${q.source}"><span class="ticker-sym">${dispSym}</span><span class="ticker-price ${isGold ? 'gold' : ''}">${priceStr}</span>${badgeHtml}</div>`;
+        return `<div class="ticker-item" title="${q.name} • Fuente Oficial: ${q.source}"><span class="ticker-sym">${dispSym}</span><span class="ticker-price ${isGold ? 'gold' : ''}">${priceStr}</span>${badgeHtml}</div>`;
     }).join('');
 
-    const setHtml = buildItemsHtml();
+    // 2. Dynamic Personal Holdings Section (Model B: Private to each user)
+    let userHoldingsHtml = '';
+    const userItems = (currentUser && Array.isArray(investmentsHoldings) && investmentsHoldings.length > 0)
+        ? investmentsHoldings.filter(h => h.ticker && h.ticker !== 'CETES28D' && h.ticker !== 'USDMXN')
+        : [];
+
+    if (userItems.length > 0) {
+        // Unique user holdings by ticker (prevent duplicate ticker items)
+        const seenTickers = new Set();
+        const uniqueUserHoldings = [];
+        userItems.forEach(h => {
+            const clean = h.ticker.trim().toUpperCase();
+            if (!seenTickers.has(clean)) {
+                seenTickers.add(clean);
+                uniqueUserHoldings.push(h);
+            }
+        });
+
+        const itemsHtml = uniqueUserHoldings.map(h => {
+            const quote = resolveMarketQuote(h.ticker, h.name);
+            const price = quote?.price || h.currentPrice || h.avgCost || 0;
+            const changePct = quote?.change_pct != null ? quote.change_pct : (h.pnlPct || 0);
+            const isUp = changePct >= 0;
+            const sign = isUp ? '+' : '';
+            const priceStr = `$${price.toFixed(2)}`;
+            const badgeHtml = `<span class="ticker-badge-chg ${isUp ? 'up' : 'down'}">${sign}${changePct.toFixed(2)}% ${isUp ? '▲' : '▼'}</span>`;
+
+            return `<div class="ticker-item" title="Activo en tu portafolio: ${h.name}"><span class="ticker-sym" style="color: var(--azteca-green-vibrant); font-weight: 700;">💼 ${h.ticker}</span><span class="ticker-price">${priceStr}</span>${badgeHtml}<span class="ticker-tag portfolio">MI CARTERA</span></div>`;
+        }).join('');
+
+        userHoldingsHtml = `<div class="ticker-divider">│</div><div class="ticker-section-pill"><span class="ticker-pulse"></span> MI PORTAFOLIO</div>${itemsHtml}`;
+    } else {
+        // Fallback default BMV leaders if user is guest or has no stocks registered yet
+        const fallbackSymbols = ['FUNO11', 'IVVPESO', 'FMTY14'];
+        const fallbackQuotes = fallbackSymbols.map(s => latestMarketQuotes[s] || DEFAULT_MARKET_QUOTES.find(d => d.symbol === s)).filter(Boolean);
+        const fallbackHtml = fallbackQuotes.map(q => {
+            const isUp = q.change_pct >= 0;
+            const sign = isUp ? '+' : '';
+            const priceStr = `$${q.price.toFixed(2)}`;
+            const badgeHtml = `<span class="ticker-badge-chg ${isUp ? 'up' : 'down'}">${sign}${q.change_pct.toFixed(2)}% ${isUp ? '▲' : '▼'}</span>`;
+            let dispSym = q.symbol === 'FUNO11' ? 'FUNO 11' : (q.symbol === 'FMTY14' ? 'FMTY 14' : q.symbol);
+            return `<div class="ticker-item" title="${q.name} • BMV"><span class="ticker-sym">${dispSym}</span><span class="ticker-price">${priceStr}</span>${badgeHtml}</div>`;
+        }).join('');
+
+        userHoldingsHtml = `<div class="ticker-divider">│</div>${fallbackHtml}`;
+    }
+
+    const setHtml = `${macroHtml}${userHoldingsHtml}`;
+    // Duplicate set for seamless -50% CSS infinite marquee
     track.innerHTML = `${setHtml}${setHtml}`;
 };
 
@@ -2244,6 +2291,8 @@ const loadInvestmentsData = async () => {
                     </td>
                 </tr>`;
         }
+        investmentsHoldings = [];
+        renderTickerTrack();
         return;
     }
 
@@ -2403,6 +2452,7 @@ const loadInvestmentsData = async () => {
         renderInvestmentsTable();
         updateInvestmentsKPIs();
         updateConsolidatedNetWorth();
+        renderTickerTrack();
 
     } catch (err) {
         console.error('Error loading investments:', err);
