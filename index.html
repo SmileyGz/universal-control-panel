@@ -13,8 +13,8 @@
     <!-- Chart.js -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 
-    <!-- Custom CSS (v5.0 cache bust - Transactions Category Analytics & Monthly Selector) -->
-    <link rel="stylesheet" href="styles.css?v=5.0">
+    <!-- Custom CSS (v5.1 cache bust - Edit Transactions & Action Controls) -->
+    <link rel="stylesheet" href="styles.css?v=5.1">
 
     <!-- Supabase JS Client -->
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
@@ -470,7 +470,7 @@
                                     <th class="align-right">Monto (MXN)</th>
                                     <th>Tipo</th>
                                     <th class="align-center" style="width: 135px;">Comprobante</th>
-                                    <th class="align-center" style="width: 70px;">Acción</th>
+                                    <th class="align-center" style="width: 85px;">Acción</th>
                                 </tr>
                             </thead>
                             <tbody id="transactions-body">
@@ -760,7 +760,7 @@
                 </div>
                 <div class="modal-footer">
                     <button type="button" id="btn-cancel" class="btn btn-ghost">Cancelar</button>
-                    <button type="submit" class="btn btn-primary">Guardar Transacción</button>
+                    <button type="submit" id="btn-submit-tx" class="btn btn-primary">Guardar Transacción</button>
                 </div>
             </form>
         </div>
@@ -1487,6 +1487,6 @@
 
     <!-- Custom Logic -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
-    <script src="app.js?v=20260928_v1"></script>
+    <script src="app.js?v=20260928_v2"></script>
 </body>
 </html>

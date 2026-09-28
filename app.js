@@ -136,12 +136,16 @@ const TRANSACTION_CATEGORIES = {
     ]
 };
 
+let editingTxId = null;
+
 const updateCategoryDropdown = (type = 'expense', selectedVal = null) => {
     const catSelect = document.getElementById('f-category');
     if (!catSelect) return;
     catSelect.innerHTML = '';
 
     const groups = TRANSACTION_CATEGORIES[type] || TRANSACTION_CATEGORIES.expense;
+    let foundSelected = false;
+
     groups.forEach(g => {
         const optgroup = document.createElement('optgroup');
         optgroup.label = g.group;
@@ -149,27 +153,87 @@ const updateCategoryDropdown = (type = 'expense', selectedVal = null) => {
             const optionEl = document.createElement('option');
             optionEl.value = opt.value;
             optionEl.textContent = opt.label;
-            if (selectedVal && selectedVal === opt.value) {
+            if (selectedVal && selectedVal.trim().toLowerCase() === opt.value.toLowerCase()) {
                 optionEl.selected = true;
+                foundSelected = true;
             }
             optgroup.appendChild(optionEl);
         });
         catSelect.appendChild(optgroup);
     });
+
+    // If editing a historical transaction with a legacy category not in the catalog:
+    if (selectedVal && !foundSelected) {
+        const legacyGroup = document.createElement('optgroup');
+        legacyGroup.label = '⚠️ Categoría Actual (Histórica)';
+        const legacyOpt = document.createElement('option');
+        legacyOpt.value = selectedVal;
+        legacyOpt.textContent = `⚠️ ${selectedVal} (Reclasificar)`;
+        legacyOpt.selected = true;
+        legacyGroup.appendChild(legacyOpt);
+        catSelect.prepend(legacyGroup);
+    }
 };
 
 // ============================================================
-// MODAL
+// MODAL (NUEVA / EDITAR TRANSACCIÓN)
 // ============================================================
 const openModal = () => {
+    editingTxId = null;
     document.getElementById('tx-form').reset();
     document.getElementById('f-date').value = todayISO();
+    const modalTitle = document.getElementById('modal-title');
+    const submitBtn = document.getElementById('btn-submit-tx');
+    if (modalTitle) modalTitle.textContent = 'Nueva Transacción';
+    if (submitBtn) submitBtn.textContent = 'Guardar Transacción';
     const typeSelect = document.getElementById('f-type');
     if (typeSelect) typeSelect.value = 'expense';
     updateCategoryDropdown('expense');
     document.getElementById('modal-overlay').classList.remove('hidden');
 };
-const closeModal = () => document.getElementById('modal-overlay').classList.add('hidden');
+
+const openEditTransactionModal = (txId) => {
+    const tx = currentTransactions.find(t => String(t.id) === String(txId));
+    if (!tx) {
+        showToast('Transacción no encontrada.', 'warning');
+        return;
+    }
+
+    editingTxId = tx.id;
+    const form = document.getElementById('tx-form');
+    if (form) form.reset();
+
+    const modalTitle = document.getElementById('modal-title');
+    const submitBtn = document.getElementById('btn-submit-tx');
+    if (modalTitle) modalTitle.textContent = '✏️ Editar Transacción';
+    if (submitBtn) submitBtn.textContent = 'Actualizar Transacción';
+
+    const dateEl = document.getElementById('f-date');
+    const typeEl = document.getElementById('f-type');
+    const descEl = document.getElementById('f-desc');
+    const amtEl = document.getElementById('f-amount');
+    const notesEl = document.getElementById('f-notes');
+    const fileEl = document.getElementById('f-receipt-file');
+
+    if (dateEl) dateEl.value = tx.date || todayISO();
+    if (typeEl) typeEl.value = tx.type || 'expense';
+    updateCategoryDropdown(tx.type || 'expense', tx.category);
+    if (descEl) descEl.value = tx.description || '';
+    if (amtEl) amtEl.value = tx.amount || '';
+    if (notesEl) notesEl.value = tx.notes || '';
+    if (fileEl) fileEl.value = '';
+
+    document.getElementById('modal-overlay').classList.remove('hidden');
+};
+
+const closeModal = () => {
+    editingTxId = null;
+    const modalTitle = document.getElementById('modal-title');
+    const submitBtn = document.getElementById('btn-submit-tx');
+    if (modalTitle) modalTitle.textContent = 'Nueva Transacción';
+    if (submitBtn) submitBtn.textContent = 'Guardar Transacción';
+    document.getElementById('modal-overlay').classList.add('hidden');
+};
 
 document.getElementById('fab-add')?.addEventListener('click', openModal);
 document.getElementById('btn-open-add-tx')?.addEventListener('click', openModal);
@@ -301,7 +365,90 @@ document.getElementById('tx-form').addEventListener('submit', async (e) => {
     }
 
     try {
-        // En Supabase table, insert transaction
+        if (editingTxId) {
+            // UPDATE EXISTING TRANSACTION
+            const targetId = editingTxId;
+            const updatePayload = {
+                date: tx.date,
+                description: tx.description,
+                amount: tx.amount,
+                type: tx.type,
+                category: tx.category,
+                notes: tx.notes
+            };
+
+            const { error: updateError } = await supabaseClient
+                .from('finance_transactions')
+                .update(updatePayload)
+                .eq('id', targetId);
+
+            if (updateError) throw updateError;
+
+            // If an attachment file was provided during edit, upload and append it
+            if (rawReceiptFile) {
+                const isImg = rawReceiptFile.type.startsWith('image/');
+                const isPdf = rawReceiptFile.type === 'application/pdf' || rawReceiptFile.name.toLowerCase().endsWith('.pdf');
+                const isXml = rawReceiptFile.type === 'text/xml' || rawReceiptFile.type === 'application/xml' || rawReceiptFile.name.toLowerCase().endsWith('.xml');
+
+                try {
+                    const uploadRes = await uploadFileToSupabaseStorage(rawReceiptFile, targetId, tx.date?.split('-')[0]);
+                    const attachedObj = {
+                        id: 'att_' + Date.now(),
+                        name: rawReceiptFile.name,
+                        type: isImg ? 'image' : (isPdf ? 'pdf' : (isXml ? 'xml' : 'doc')),
+                        size: (rawReceiptFile.size / 1024).toFixed(0) + ' KB',
+                        date: tx.date,
+                        url: uploadRes.url,
+                        path: uploadRes.path
+                    };
+
+                    const existingTx = currentTransactions.find(t => String(t.id) === String(targetId));
+                    const existingAttachments = existingTx?.attachments || [];
+                    const mergedAttachments = [...existingAttachments, attachedObj];
+
+                    await supabaseClient
+                        .from('finance_transactions')
+                        .update({ attachments: mergedAttachments })
+                        .eq('id', targetId);
+
+                    const store = getStoredTxData();
+                    store[targetId] = {
+                        attachments: mergedAttachments,
+                        is_deductible: existingTx?.is_deductible || false,
+                        notes: tx.notes || ''
+                    };
+                    saveStoredTxData(store);
+                } catch (storageErr) {
+                    console.warn('Storage upload error during edit:', storageErr);
+                }
+            } else {
+                const store = getStoredTxData();
+                if (store[targetId]) {
+                    store[targetId].notes = tx.notes;
+                    saveStoredTxData(store);
+                }
+            }
+
+            closeModal();
+            showToast(`✅ "${tx.description}" actualizado correctamente!`, 'success');
+
+            const txYear = tx.date.split('-')[0];
+            if (txYear !== currentYear) {
+                currentYear = txYear;
+                const sel = document.getElementById('year-selector');
+                if (!Array.from(sel.options).find(o => o.value === currentYear)) {
+                    const opt = document.createElement('option');
+                    opt.value = currentYear;
+                    opt.textContent = currentYear;
+                    sel.appendChild(opt);
+                }
+                sel.value = currentYear;
+            }
+            await loadYearlyData(currentYear);
+            return;
+        }
+
+        // En Supabase table, insert transaction (for new transactions)
         const { data: insertedRows, error } = await supabaseClient
             .from('finance_transactions')
             .insert([withUser(tx)])
@@ -1191,11 +1338,23 @@ const applyTransactionsFilter = () => {
             <td class="align-center">
                 ${receiptBadgeHtml}
             </td>
-            <td class="align-center">
+            <td class="align-center" style="white-space: nowrap;">
+                <button class="edit-tx-btn" data-id="${tx.id}" title="Editar transacción">
+                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+                </button>
                 <button class="delete-btn" data-id="${tx.id}" title="Eliminar movimiento">✕</button>
             </td>
         `;
         tbody.appendChild(tr);
+    });
+
+    // Wire up Edit Transaction click listeners
+    tbody.querySelectorAll('.edit-tx-btn').forEach(btn => {
+        btn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            const id = btn.dataset.id;
+            openEditTransactionModal(id);
+        });
     });
 
     // Wire up Receipt Badge click listeners

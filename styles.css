@@ -2649,3 +2649,25 @@ select.glass-input option {
     border-radius: 2px;
     transition: width 0.4s ease;
 }
+
+/* Edit Transaction Button */
+.edit-tx-btn {
+    background: transparent;
+    border: none;
+    color: var(--text-muted);
+    cursor: pointer;
+    padding: 4px 6px;
+    border-radius: 4px;
+    transition: var(--transition);
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    line-height: 1;
+}
+
+.edit-tx-btn:hover {
+    color: var(--azteca-gold);
+    background: rgba(255, 199, 44, 0.15);
+    transform: scale(1.1);
+}
+
