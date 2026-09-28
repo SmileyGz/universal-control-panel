@@ -681,14 +681,379 @@ const saveStoredTxData = (store) => {
 };
 
 // ============================================================
-// TRANSACTION FILTERS & DYNAMIC SUBTOTAL LEDGER
+// TRANSACTION FILTERS & DYNAMIC SUBTOTAL LEDGER (PHASE 8)
 // ============================================================
+const escapeHtml = (str) => {
+    if (!str) return '';
+    return String(str)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#039;');
+};
+
 let latestFilteredTransactions = [];
 let activeTxFilter = 'all';
+let activeTxMonth = 'all'; // 'all' or '01'..'12'
+let activeAnalyticsFlow = 'expense'; // 'expense' or 'income'
+let activeAnalyticsGrouping = 'macro'; // 'macro' or 'detailed'
+let activeTxCategoryFilter = null; // null or specific category / macro group name
+let txCategoryDonutChartInstance = null;
+
+const MACRO_COLORS = {
+    expense: {
+        '⚡ Gastos Fijos & Servicios': '#38bdf8',
+        '🛒 Gastos Variables & Estilo de Vida': '#f59e0b',
+        '📦 Negocios & Operación': '#10b981'
+    },
+    income: {
+        '💼 Negocios & Ingresos Activos': '#10b981',
+        '📈 Flujo Pasivo & Rentas': '#FFC72C',
+        '🏦 Otros Ingresos': '#818cf8'
+    }
+};
+
+const DETAILED_PALETTE = [
+    '#FFC72C', '#00A859', '#38BDF8', '#F59E0B', '#A855F7',
+    '#EC4899', '#14B8A6', '#F43F5E', '#6366F1', '#84CC16',
+    '#FB923C', '#06B6D4', '#EAB308', '#D946EF', '#64748B'
+];
+
+const getTxMonth = (dateStr) => {
+    if (!dateStr) return '';
+    const parts = dateStr.split('-');
+    if (parts.length >= 2) {
+        return parts[1].padStart(2, '0');
+    }
+    return '';
+};
+
+const getMacroGroupForCategory = (catName, flowType = 'expense') => {
+    if (!catName) {
+        return flowType === 'expense' 
+            ? '🛒 Gastos Variables & Estilo de Vida' 
+            : '🏦 Otros Ingresos';
+    }
+    const cleanCat = catName.trim().toLowerCase();
+    
+    const catalog = TRANSACTION_CATEGORIES[flowType] || TRANSACTION_CATEGORIES.expense;
+    for (const g of catalog) {
+        for (const opt of g.options) {
+            if (cleanCat === opt.value.toLowerCase() || cleanCat === opt.label.toLowerCase()) {
+                return g.group;
+            }
+        }
+    }
+    
+    // Fallback heuristic for custom / historical entries
+    if (flowType === 'expense') {
+        if (/luz|cfe|agua|gas|internet|wifi|tel|recarga|renta|alquiler|casa|hogar|gasolina|transporte|uber|seguro|software|suscrip|gym|streaming/i.test(cleanCat)) {
+            return '⚡ Gastos Fijos & Servicios';
+        }
+        if (/inventario|mercanc|env[ií]o|gu[ií]a|marketing|ads|publicidad|empaque|insumo|comision|pasarela|negocio|business/i.test(cleanCat)) {
+            return '📦 Negocios & Operación';
+        }
+        return '🛒 Gastos Variables & Estilo de Vida';
+    } else {
+        if (/prestamo|préstamo|inter[eé]s|cetes|bolsa|fibra|dividendo|rendimiento|renta cobrada/i.test(cleanCat)) {
+            return '📈 Flujo Pasivo & Rentas';
+        }
+        if (/venta|tienda|freelance|upwork|sueldo|nomina|nómina|honorario|comision/i.test(cleanCat)) {
+            return '💼 Negocios & Ingresos Activos';
+        }
+        return '🏦 Otros Ingresos';
+    }
+};
 
 // State for active transaction in Receipt Hub
 let activeReceiptTx = null;
 let activeReceiptAttachments = [];
+
+const updateCategoryAnalytics = () => {
+    // 1. Clear category filter button state
+    const clearBtn = document.getElementById('tx-btn-clear-cat-filter');
+    if (clearBtn) {
+        if (activeTxCategoryFilter) {
+            clearBtn.style.display = 'inline-flex';
+            clearBtn.innerHTML = `<span>✕ Filtrando: <strong>${escapeHtml(activeTxCategoryFilter)}</strong></span>`;
+        } else {
+            clearBtn.style.display = 'none';
+        }
+    }
+
+    // 2. Filter transactions for analytics calculation (scoped to active month & flow)
+    const relevantTxs = currentTransactions.filter(tx => {
+        if (tx.type !== activeAnalyticsFlow) return false;
+        if (activeTxMonth !== 'all') {
+            const txM = getTxMonth(tx.date);
+            if (txM !== activeTxMonth) return false;
+        }
+        return true;
+    });
+
+    let totalAmt = 0;
+    const catMap = {};
+    const macroTotals = {};
+    const flowCatalog = TRANSACTION_CATEGORIES[activeAnalyticsFlow] || TRANSACTION_CATEGORIES.expense;
+    flowCatalog.forEach(g => {
+        macroTotals[g.group] = 0;
+    });
+
+    relevantTxs.forEach(tx => {
+        const amt = parseFloat(tx.amount || 0);
+        if (amt <= 0) return;
+        totalAmt += amt;
+
+        const macroGroup = getMacroGroupForCategory(tx.category, activeAnalyticsFlow);
+        if (macroTotals[macroGroup] !== undefined) {
+            macroTotals[macroGroup] += amt;
+        } else {
+            macroTotals[macroGroup] = (macroTotals[macroGroup] || 0) + amt;
+        }
+
+        const key = (activeAnalyticsGrouping === 'macro')
+            ? macroGroup
+            : (tx.category || 'Otros');
+
+        if (!catMap[key]) {
+            catMap[key] = { name: key, total: 0, count: 0, macroGroup: macroGroup };
+        }
+        catMap[key].total += amt;
+        catMap[key].count += 1;
+    });
+
+    const items = Object.values(catMap).sort((a, b) => b.total - a.total);
+    items.forEach(item => {
+        item.pct = totalAmt > 0 ? (item.total / totalAmt) * 100 : 0;
+    });
+
+    // 3. Render Macro KPI Cards
+    const macroContainer = document.getElementById('tx-macro-kpis');
+    if (macroContainer) {
+        if (activeAnalyticsFlow === 'expense') {
+            const fijosTotal = macroTotals['⚡ Gastos Fijos & Servicios'] || 0;
+            const fijosPct = totalAmt > 0 ? (fijosTotal / totalAmt) * 100 : 0;
+
+            const varTotal = macroTotals['🛒 Gastos Variables & Estilo de Vida'] || 0;
+            const varPct = totalAmt > 0 ? (varTotal / totalAmt) * 100 : 0;
+
+            const negTotal = macroTotals['📦 Negocios & Operación'] || 0;
+            const negPct = totalAmt > 0 ? (negTotal / totalAmt) * 100 : 0;
+
+            macroContainer.innerHTML = `
+                <div class="tx-macro-kpi-card fijos ${activeTxCategoryFilter === '⚡ Gastos Fijos & Servicios' ? 'active-filter' : ''}" data-cat-filter="⚡ Gastos Fijos & Servicios" style="${activeTxCategoryFilter === '⚡ Gastos Fijos & Servicios' ? 'box-shadow:0 0 12px rgba(56,189,248,0.4);border-color:#38bdf8;' : ''}">
+                    <div class="macro-kpi-header">
+                        <span>⚡ Fijos & Servicios</span>
+                        <span class="macro-kpi-pct">${fijosPct.toFixed(1)}%</span>
+                    </div>
+                    <div class="macro-kpi-val">${formatCurrency(fijosTotal)}</div>
+                    <div class="macro-kpi-sub">CFE, Agua, Renta, Internet...</div>
+                </div>
+                <div class="tx-macro-kpi-card variables ${activeTxCategoryFilter === '🛒 Gastos Variables & Estilo de Vida' ? 'active-filter' : ''}" data-cat-filter="🛒 Gastos Variables & Estilo de Vida" style="${activeTxCategoryFilter === '🛒 Gastos Variables & Estilo de Vida' ? 'box-shadow:0 0 12px rgba(245,158,11,0.4);border-color:#f59e0b;' : ''}">
+                    <div class="macro-kpi-header">
+                        <span>🛒 Variables & Vida</span>
+                        <span class="macro-kpi-pct">${varPct.toFixed(1)}%</span>
+                    </div>
+                    <div class="macro-kpi-val">${formatCurrency(varTotal)}</div>
+                    <div class="macro-kpi-sub">Súper, Comida, Ocio, Salud...</div>
+                </div>
+                <div class="tx-macro-kpi-card negocios ${activeTxCategoryFilter === '📦 Negocios & Operación' ? 'active-filter' : ''}" data-cat-filter="📦 Negocios & Operación" style="${activeTxCategoryFilter === '📦 Negocios & Operación' ? 'box-shadow:0 0 12px rgba(16,185,129,0.4);border-color:#10b981;' : ''}">
+                    <div class="macro-kpi-header">
+                        <span>📦 Negocios & Operación</span>
+                        <span class="macro-kpi-pct">${negPct.toFixed(1)}%</span>
+                    </div>
+                    <div class="macro-kpi-val">${formatCurrency(negTotal)}</div>
+                    <div class="macro-kpi-sub">Inventario, Envíos, Ads...</div>
+                </div>
+            `;
+        } else {
+            const actTotal = macroTotals['💼 Negocios & Ingresos Activos'] || 0;
+            const actPct = totalAmt > 0 ? (actTotal / totalAmt) * 100 : 0;
+
+            const pasTotal = macroTotals['📈 Flujo Pasivo & Rentas'] || 0;
+            const pasPct = totalAmt > 0 ? (pasTotal / totalAmt) * 100 : 0;
+
+            const otrTotal = macroTotals['🏦 Otros Ingresos'] || 0;
+            const otrPct = totalAmt > 0 ? (otrTotal / totalAmt) * 100 : 0;
+
+            macroContainer.innerHTML = `
+                <div class="tx-macro-kpi-card negocios ${activeTxCategoryFilter === '💼 Negocios & Ingresos Activos' ? 'active-filter' : ''}" data-cat-filter="💼 Negocios & Ingresos Activos" style="${activeTxCategoryFilter === '💼 Negocios & Ingresos Activos' ? 'box-shadow:0 0 12px rgba(16,185,129,0.4);border-color:#10b981;' : ''}">
+                    <div class="macro-kpi-header">
+                        <span>💼 Negocios & Activos</span>
+                        <span class="macro-kpi-pct">${actPct.toFixed(1)}%</span>
+                    </div>
+                    <div class="macro-kpi-val">${formatCurrency(actTotal)}</div>
+                    <div class="macro-kpi-sub">Ventas Tienda, Clientes, Sueldo...</div>
+                </div>
+                <div class="tx-macro-kpi-card fijos ${activeTxCategoryFilter === '📈 Flujo Pasivo & Rentas' ? 'active-filter' : ''}" data-cat-filter="📈 Flujo Pasivo & Rentas" style="${activeTxCategoryFilter === '📈 Flujo Pasivo & Rentas' ? 'box-shadow:0 0 12px rgba(255,199,44,0.4);border-color:#FFC72C;' : ''}">
+                    <div class="macro-kpi-header">
+                        <span>📈 Pasivo & Rentas</span>
+                        <span class="macro-kpi-pct">${pasPct.toFixed(1)}%</span>
+                    </div>
+                    <div class="macro-kpi-val">${formatCurrency(pasTotal)}</div>
+                    <div class="macro-kpi-sub">Préstamos, CETES, FIBRAs...</div>
+                </div>
+                <div class="tx-macro-kpi-card variables ${activeTxCategoryFilter === '🏦 Otros Ingresos' ? 'active-filter' : ''}" data-cat-filter="🏦 Otros Ingresos" style="${activeTxCategoryFilter === '🏦 Otros Ingresos' ? 'box-shadow:0 0 12px rgba(129,140,248,0.4);border-color:#818cf8;' : ''}">
+                    <div class="macro-kpi-header">
+                        <span>🏦 Otros Ingresos</span>
+                        <span class="macro-kpi-pct">${otrPct.toFixed(1)}%</span>
+                    </div>
+                    <div class="macro-kpi-val">${formatCurrency(otrTotal)}</div>
+                    <div class="macro-kpi-sub">Depósitos, Reembolsos...</div>
+                </div>
+            `;
+        }
+
+        macroContainer.querySelectorAll('.tx-macro-kpi-card').forEach(card => {
+            card.addEventListener('click', () => {
+                const targetCat = card.dataset.catFilter;
+                if (activeTxCategoryFilter === targetCat) {
+                    activeTxCategoryFilter = null;
+                } else {
+                    activeTxCategoryFilter = targetCat;
+                }
+                applyTransactionsFilter();
+            });
+        });
+    }
+
+    // 4. Update Donut Center Label & Amount
+    const monthNames = {
+        'all': 'TODO EL AÑO',
+        '01': 'ENERO', '02': 'FEBRERO', '03': 'MARZO',
+        '04': 'ABRIL', '05': 'MAYO', '06': 'JUNIO',
+        '07': 'JULIO', '08': 'AGOSTO', '09': 'SEPTIEMBRE',
+        '10': 'OCTUBRE', '11': 'NOVIEMBRE', '12': 'DICIEMBRE'
+    };
+
+    const centerLabel = document.getElementById('tx-donut-center-label');
+    const centerAmt = document.getElementById('tx-donut-center-amt');
+    if (centerLabel) {
+        const flowText = activeAnalyticsFlow === 'expense' ? 'TOTAL GASTOS' : 'TOTAL INGRESOS';
+        centerLabel.textContent = `${flowText} (${monthNames[activeTxMonth] || 'AÑO'})`;
+    }
+    if (centerAmt) {
+        centerAmt.textContent = formatCurrency(totalAmt);
+        centerAmt.style.color = (activeAnalyticsFlow === 'expense') ? 'var(--mx-red-light)' : 'var(--azteca-green-vibrant)';
+    }
+
+    // 5. Update Donut Chart
+    const canvas = document.getElementById('txCategoryDonutChart');
+    if (canvas && typeof Chart !== 'undefined') {
+        if (txCategoryDonutChartInstance) {
+            txCategoryDonutChartInstance.destroy();
+            txCategoryDonutChartInstance = null;
+        }
+
+        if (items.length > 0 && totalAmt > 0) {
+            const labels = items.map(i => i.name);
+            const dataValues = items.map(i => i.total);
+            const bgColors = items.map((item, idx) => {
+                if (activeAnalyticsGrouping === 'macro') {
+                    const map = MACRO_COLORS[activeAnalyticsFlow] || MACRO_COLORS.expense;
+                    return map[item.name] || DETAILED_PALETTE[idx % DETAILED_PALETTE.length];
+                }
+                return DETAILED_PALETTE[idx % DETAILED_PALETTE.length];
+            });
+
+            const ctx = canvas.getContext('2d');
+            txCategoryDonutChartInstance = new Chart(ctx, {
+                type: 'doughnut',
+                data: {
+                    labels: labels,
+                    datasets: [{
+                        data: dataValues,
+                        backgroundColor: bgColors,
+                        borderColor: '#0f1319',
+                        borderWidth: 2,
+                        hoverOffset: 6
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    cutout: '72%',
+                    plugins: {
+                        legend: { display: false },
+                        tooltip: {
+                            backgroundColor: 'rgba(10, 16, 13, 0.95)',
+                            titleColor: '#FFC72C',
+                            bodyColor: '#fff',
+                            borderColor: 'rgba(255, 199, 44, 0.3)',
+                            borderWidth: 1,
+                            padding: 10,
+                            callbacks: {
+                                label: function(context) {
+                                    const val = context.raw || 0;
+                                    const pct = totalAmt > 0 ? ((val / totalAmt) * 100).toFixed(1) : 0;
+                                    return ` ${formatCurrency(val)} (${pct}%)`;
+                                }
+                            }
+                        }
+                    },
+                    onClick: (evt, elements) => {
+                        if (elements && elements.length > 0) {
+                            const index = elements[0].index;
+                            const clickedCat = labels[index];
+                            if (activeTxCategoryFilter === clickedCat) {
+                                activeTxCategoryFilter = null;
+                            } else {
+                                activeTxCategoryFilter = clickedCat;
+                            }
+                            applyTransactionsFilter();
+                        }
+                    }
+                }
+            });
+        }
+    }
+
+    // 6. Update Category Ranking List
+    const rankingList = document.getElementById('tx-ranking-list');
+    if (rankingList) {
+        if (items.length === 0 || totalAmt <= 0) {
+            rankingList.innerHTML = `<div style="padding: 24px; text-align: center; color: var(--text-muted); font-size: 12px;">No hay movimientos registrados para este periodo y flujo.</div>`;
+        } else {
+            rankingList.innerHTML = items.map((item, idx) => {
+                const color = (activeAnalyticsGrouping === 'macro')
+                    ? ((MACRO_COLORS[activeAnalyticsFlow] || MACRO_COLORS.expense)[item.name] || DETAILED_PALETTE[idx % DETAILED_PALETTE.length])
+                    : DETAILED_PALETTE[idx % DETAILED_PALETTE.length];
+                const isSelected = (activeTxCategoryFilter === item.name);
+                return `
+                    <div class="tx-ranking-item ${isSelected ? 'active-filter' : ''}" data-cat-name="${escapeHtml(item.name)}" style="${isSelected ? 'border-color: var(--azteca-gold); background: rgba(255,199,44,0.1);' : ''}">
+                        <div class="tx-ranking-row">
+                            <span class="tx-ranking-name">
+                                <span style="display:inline-block; width:8px; height:8px; border-radius:50%; background:${color}; flex-shrink:0;"></span>
+                                <span style="white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:260px;">${escapeHtml(item.name)}</span>
+                                <span style="font-size:10px; color:var(--text-muted); font-weight:normal;">(${item.count})</span>
+                            </span>
+                            <div class="tx-ranking-amt-wrap">
+                                <span class="tx-ranking-amt">${formatCurrency(item.total)}</span>
+                                <span class="tx-ranking-pct">${item.pct.toFixed(1)}%</span>
+                            </div>
+                        </div>
+                        <div class="tx-ranking-bar-track">
+                            <div class="tx-ranking-bar-fill" style="width: ${item.pct}%; background: ${color};"></div>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+
+            rankingList.querySelectorAll('.tx-ranking-item').forEach(el => {
+                el.addEventListener('click', () => {
+                    const catName = el.dataset.catName;
+                    if (activeTxCategoryFilter === catName) {
+                        activeTxCategoryFilter = null;
+                    } else {
+                        activeTxCategoryFilter = catName;
+                    }
+                    applyTransactionsFilter();
+                });
+            });
+        }
+    }
+};
 
 const applyTransactionsFilter = () => {
     const tbody = document.getElementById('transactions-body');
@@ -698,37 +1063,56 @@ const applyTransactionsFilter = () => {
     const query = (document.getElementById('tx-search')?.value || '').toLowerCase().trim();
 
     const filtered = currentTransactions.filter(tx => {
-        // Filter by pill
-        let matchesFilter = true;
+        // 1. Filter by top pill
+        let matchesPill = true;
         if (activeTxFilter === 'income') {
-            matchesFilter = tx.type === 'income';
+            matchesPill = tx.type === 'income';
         } else if (activeTxFilter === 'expense') {
-            matchesFilter = tx.type === 'expense';
+            matchesPill = tx.type === 'expense';
         } else if (activeTxFilter === 'unbacked') {
             // Only expenses that lack any ticket or invoice attachment
-            matchesFilter = tx.type === 'expense' && (!tx.attachments || tx.attachments.length === 0);
+            matchesPill = tx.type === 'expense' && (!tx.attachments || tx.attachments.length === 0);
         } else if (activeTxFilter === 'backed') {
             // Transactions with at least 1 document attached
-            matchesFilter = !!(tx.attachments && tx.attachments.length > 0);
+            matchesPill = !!(tx.attachments && tx.attachments.length > 0);
         } else if (activeTxFilter === 'business') {
             const cat = (tx.category || '').toLowerCase();
             const desc = (tx.description || '').toLowerCase();
             const notes = (tx.notes || '').toLowerCase();
-            matchesFilter = cat.includes('negocio') || cat.includes('venta') || cat.includes('comercio') || cat.includes('tienda') || cat.includes('store') || desc.includes('venta') || desc.includes('tienda') || notes.includes('tienda');
+            matchesPill = cat.includes('negocio') || cat.includes('venta') || cat.includes('comercio') || cat.includes('tienda') || cat.includes('store') || desc.includes('venta') || desc.includes('tienda') || notes.includes('tienda');
         } else if (activeTxFilter === 'passive') {
             const cat = (tx.category || '').toLowerCase();
             const desc = (tx.description || '').toLowerCase();
-            matchesFilter = cat.includes('interés') || cat.includes('interes') || cat.includes('renta') || cat.includes('dividendo') || cat.includes('rendimiento') || cat.includes('cetes') || desc.includes('interés') || desc.includes('interes') || desc.includes('renta');
+            matchesPill = cat.includes('interés') || cat.includes('interes') || cat.includes('renta') || cat.includes('dividendo') || cat.includes('rendimiento') || cat.includes('cetes') || desc.includes('interés') || desc.includes('interes') || desc.includes('renta');
         }
 
-        // Filter by search query
+        // 2. Filter by month
+        let matchesMonth = true;
+        if (activeTxMonth !== 'all') {
+            const txM = getTxMonth(tx.date);
+            matchesMonth = (txM === activeTxMonth);
+        }
+
+        // 3. Filter by category click (from donut slice, ranking item, or macro card)
+        let matchesCategory = true;
+        if (activeTxCategoryFilter) {
+            const txCat = tx.category || 'Otros';
+            const txMacro = getMacroGroupForCategory(txCat, tx.type);
+            if (activeTxCategoryFilter.startsWith('⚡') || activeTxCategoryFilter.startsWith('🛒') || activeTxCategoryFilter.startsWith('📦') || activeTxCategoryFilter.startsWith('💼') || activeTxCategoryFilter.startsWith('📈') || activeTxCategoryFilter.startsWith('🏦')) {
+                matchesCategory = (txMacro === activeTxCategoryFilter);
+            } else {
+                matchesCategory = (txCat.toLowerCase() === activeTxCategoryFilter.toLowerCase());
+            }
+        }
+
+        // 4. Filter by search query
         let matchesQuery = true;
         if (query) {
             const searchable = `${tx.date || ''} ${tx.description || ''} ${tx.category || ''} ${tx.notes || ''} ${tx.amount || ''}`.toLowerCase();
             matchesQuery = searchable.includes(query);
         }
 
-        return matchesFilter && matchesQuery;
+        return matchesPill && matchesMonth && matchesCategory && matchesQuery;
     });
 
     latestFilteredTransactions = filtered;
@@ -755,6 +1139,9 @@ const applyTransactionsFilter = () => {
         netEl.textContent = `${filteredNet >= 0 ? '+' : ''}${formatCurrency(filteredNet)}`;
         netEl.className = `tx-stat-val ${filteredNet >= 0 ? 'text-green' : 'text-red'}`;
     }
+
+    // Always update category analytics visual state and charts
+    updateCategoryAnalytics();
 
     if (filtered.length === 0) {
         tbody.innerHTML = `<tr><td colspan="7" class="text-center" style="padding:32px;color:var(--text-muted)">No hay transacciones que coincidan con los filtros seleccionados.</td></tr>`;
@@ -923,9 +1310,74 @@ document.querySelectorAll('#tx-filter-pills .pill-btn').forEach(btn => {
         document.querySelectorAll('#tx-filter-pills .pill-btn').forEach(b => b.classList.remove('active'));
         e.currentTarget.classList.add('active');
         activeTxFilter = e.currentTarget.dataset.txFilter;
+
+        // Auto-switch flow toggle if clicking income or expense pill
+        if (activeTxFilter === 'income') {
+            activeAnalyticsFlow = 'income';
+            document.querySelectorAll('#tx-analytics-flow-toggle .toggle-pill').forEach(b => {
+                b.classList.toggle('active', b.dataset.flow === 'income');
+            });
+        } else if (activeTxFilter === 'expense' || activeTxFilter === 'unbacked') {
+            activeAnalyticsFlow = 'expense';
+            document.querySelectorAll('#tx-analytics-flow-toggle .toggle-pill').forEach(b => {
+                b.classList.toggle('active', b.dataset.flow === 'expense');
+            });
+        }
+
         applyTransactionsFilter();
     });
 });
+
+// Month Filter Pills (Phase 8: Monthly Navigator)
+document.querySelectorAll('#tx-month-pills .pill-btn').forEach(btn => {
+    btn.addEventListener('click', (e) => {
+        document.querySelectorAll('#tx-month-pills .pill-btn').forEach(b => b.classList.remove('active'));
+        e.currentTarget.classList.add('active');
+        activeTxMonth = e.currentTarget.dataset.month;
+        applyTransactionsFilter();
+    });
+});
+
+// Analytics Flow Switcher (Gastos vs Ingresos)
+document.querySelectorAll('#tx-analytics-flow-toggle .toggle-pill').forEach(btn => {
+    btn.addEventListener('click', (e) => {
+        document.querySelectorAll('#tx-analytics-flow-toggle .toggle-pill').forEach(b => b.classList.remove('active'));
+        e.currentTarget.classList.add('active');
+        activeAnalyticsFlow = e.currentTarget.dataset.flow;
+        activeTxCategoryFilter = null;
+        applyTransactionsFilter();
+    });
+});
+
+// Analytics Grouping Switcher (Macro vs Detallado)
+document.querySelectorAll('#tx-analytics-group-toggle .toggle-pill').forEach(btn => {
+    btn.addEventListener('click', (e) => {
+        document.querySelectorAll('#tx-analytics-group-toggle .toggle-pill').forEach(b => b.classList.remove('active'));
+        e.currentTarget.classList.add('active');
+        activeAnalyticsGrouping = e.currentTarget.dataset.grouping;
+        updateCategoryAnalytics();
+    });
+});
+
+// Clear Category Filter Button
+document.getElementById('tx-btn-clear-cat-filter')?.addEventListener('click', () => {
+    activeTxCategoryFilter = null;
+    applyTransactionsFilter();
+});
+
+// Collapse / Expand Analytics Card
+const collapseBtn = document.getElementById('tx-analytics-toggle-collapse');
+if (collapseBtn) {
+    collapseBtn.addEventListener('click', () => {
+        const bodyEl = document.getElementById('tx-analytics-body');
+        const iconEl = document.getElementById('tx-analytics-collapse-icon');
+        if (bodyEl) {
+            const isHidden = (bodyEl.style.display === 'none');
+            bodyEl.style.display = isHidden ? 'grid' : 'none';
+            if (iconEl) iconEl.textContent = isHidden ? '▲' : '▼';
+        }
+    });
+}
 
 document.getElementById('tx-search')?.addEventListener('input', () => {
     applyTransactionsFilter();

@@ -13,8 +13,8 @@
     <!-- Chart.js -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 
-    <!-- Custom CSS (v4.9 cache bust - Freedom Ratio Spacing & Pin Alignment) -->
-    <link rel="stylesheet" href="styles.css?v=4.9">
+    <!-- Custom CSS (v5.0 cache bust - Transactions Category Analytics & Monthly Selector) -->
+    <link rel="stylesheet" href="styles.css?v=5.0">
 
     <!-- Supabase JS Client -->
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
@@ -334,6 +334,82 @@
 
             <!-- Transactions View -->
             <section id="view-transactions" class="view-section">
+                <!-- Month Filter Pill Bar -->
+                <div class="month-pill-group" id="tx-month-pills" style="margin-bottom: 16px;">
+                    <button class="pill-btn active" data-month="all">📅 Todo el Año</button>
+                    <button class="pill-btn" data-month="01">Ene</button>
+                    <button class="pill-btn" data-month="02">Feb</button>
+                    <button class="pill-btn" data-month="03">Mar</button>
+                    <button class="pill-btn" data-month="04">Abr</button>
+                    <button class="pill-btn" data-month="05">May</button>
+                    <button class="pill-btn" data-month="06">Jun</button>
+                    <button class="pill-btn" data-month="07">Jul</button>
+                    <button class="pill-btn" data-month="08">Ago</button>
+                    <button class="pill-btn" data-month="09">Sep</button>
+                    <button class="pill-btn" data-month="10">Oct</button>
+                    <button class="pill-btn" data-month="11">Nov</button>
+                    <button class="pill-btn" data-month="12">Dic</button>
+                </div>
+
+                <!-- Category Analytics Panel (Phase 8: Monthly & Category Visual Breakdown) -->
+                <div class="tx-analytics-card glass-panel" id="tx-analytics-panel" style="margin-bottom: 20px;">
+                    <div class="tx-analytics-header">
+                        <div style="display: flex; align-items: center; gap: 12px; flex-wrap: wrap;">
+                            <div style="display: flex; align-items: center; gap: 8px;">
+                                <span style="font-size: 18px;">📊</span>
+                                <h4 style="margin: 0; font-size: 15px; font-weight: 700; color: var(--text-on-dark);" id="tx-analytics-title">Desglose por Categoría</h4>
+                            </div>
+                            <!-- Flow Switcher: Gastos vs Ingresos -->
+                            <div class="toggle-switch-group" id="tx-analytics-flow-toggle">
+                                <button class="toggle-pill active" data-flow="expense">💸 Gastos</button>
+                                <button class="toggle-pill" data-flow="income">💰 Ingresos</button>
+                            </div>
+                            <!-- Grouping Toggle: Macro vs Detallado -->
+                            <div class="toggle-switch-group" id="tx-analytics-group-toggle">
+                                <button class="toggle-pill active" data-grouping="macro">⚡ Macro</button>
+                                <button class="toggle-pill" data-grouping="detailed">🔍 Detallado</button>
+                            </div>
+                        </div>
+                        <div style="display: flex; align-items: center; gap: 10px;">
+                            <button id="tx-btn-clear-cat-filter" class="btn btn-ghost" style="display: none; padding: 4px 10px; font-size: 11px; border: 1px dashed var(--azteca-gold); color: var(--azteca-gold);" title="Quitar filtro de categoría">
+                                <span>✕ Limpiar filtro</span>
+                            </button>
+                            <button id="tx-analytics-toggle-collapse" class="btn btn-ghost" style="padding: 4px 8px; font-size: 11px; color: var(--text-muted);" title="Colapsar / Expandir panel de análisis">
+                                <span id="tx-analytics-collapse-icon">▲</span>
+                            </button>
+                        </div>
+                    </div>
+                    
+                    <div class="tx-analytics-body" id="tx-analytics-body">
+                        <!-- Donut Column -->
+                        <div class="tx-donut-col">
+                            <div class="tx-donut-wrap">
+                                <canvas id="txCategoryDonutChart"></canvas>
+                                <div class="tx-donut-center" id="tx-donut-center-info">
+                                    <span class="tx-donut-center-title" id="tx-donut-center-label">TOTAL GASTOS</span>
+                                    <span class="tx-donut-center-amt" id="tx-donut-center-amt">$0.00</span>
+                                </div>
+                            </div>
+                            <div style="font-size: 11px; color: var(--text-muted); margin-top: 10px; text-align: center;">
+                                💡 <em>Haz clic en un segmento para filtrar la tabla</em>
+                            </div>
+                        </div>
+
+                        <!-- Breakdown & Ranking Column -->
+                        <div class="tx-breakdown-col">
+                            <!-- Macro Burn Rate KPI cards (Gastos Fijos, Variables, Negocios) -->
+                            <div class="tx-macro-kpis" id="tx-macro-kpis">
+                                <!-- Dynamically injected cards -->
+                            </div>
+
+                            <!-- Detailed Ranking List -->
+                            <div class="tx-ranking-list" id="tx-ranking-list">
+                                <!-- Dynamically injected ranking items -->
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
                 <div class="glass-panel table-container">
                     <div class="table-header" style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 14px; margin-bottom: 16px;">
                         <div>
@@ -1411,6 +1487,6 @@
 
     <!-- Custom Logic -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
-    <script src="app.js?v=20260918_v23"></script>
+    <script src="app.js?v=20260928_v1"></script>
 </body>
 </html>
